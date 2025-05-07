@@ -1,0 +1,39 @@
+.nodes-container {
+    margin: 1rem 0;
+}
+
+.node-item {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #fff;
+}
+
+.node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.node-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.node-content {
+    padding: 0.5rem;
+}
+
+.add-node {
+    margin-top: 1rem;
+}
+
+/* 拖拽排序样式 */
+.node-item.dragging {
+    opacity: 0.5;
+    border: 2px dashed #999;
+}

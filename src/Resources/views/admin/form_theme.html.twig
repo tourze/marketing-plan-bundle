@@ -1,0 +1,33 @@
+{% block ea_collection_row %}
+    {% set render_expanded = form.vars.row_attr.class is defined and 'field-nodes' in form.vars.row_attr.class %}
+    {% if render_expanded %}
+        {{ block('ea_collection_row_expanded') }}
+    {% else %}
+        {{ block('ea_collection_row_collapsed') }}
+    {% endif %}
+{% endblock %}
+
+{% block ea_collection_row_expanded %}
+    {{ form_label(form) }}
+    <div class="nodes-container">
+        <div class="nodes-list" data-prototype="{{ form_widget(form.vars.prototype)|e('html_attr') }}">
+            {% for child in form %}
+                <div class="node-item">
+                    <div class="node-header">
+                        <span class="node-title">节点 #{{ loop.index }}</span>
+                        <button type="button" class="btn btn-danger btn-sm remove-node">删除</button>
+                    </div>
+                    <div class="node-content">
+                        {{ form_widget(child) }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-primary add-node">添加节点</button>
+    </div>
+    {{ form_errors(form) }}
+{% endblock %}
+
+{% block ea_collection_row_collapsed %}
+    {{ form_row(form) }}
+{% endblock %}
