@@ -4,11 +4,10 @@ namespace MarketingPlanBundle;
 
 use Knp\Menu\ItemInterface;
 use MarketingPlanBundle\Entity\Task;
-use Tourze\EasyAdminMenuBundle\Attribute\MenuProvider;
 use Tourze\EasyAdminMenuBundle\Service\LinkGeneratorInterface;
+use Tourze\EasyAdminMenuBundle\Service\MenuProviderInterface;
 
-#[MenuProvider]
-class AdminMenu
+class AdminMenu implements MenuProviderInterface
 {
     public function __construct(private readonly LinkGeneratorInterface $linkGenerator)
     {
