@@ -10,7 +10,6 @@ class MarketingPlanBundle extends Bundle implements BundleDependencyInterface
     public static function getBundleDependencies(): array
     {
         return [
-            \AntdCpBundle\AntdCpBundle::class => ['all' => true],
             \UserCrowdBundle\UserCrowdBundle::class => ['all' => true],
         ];
     }
