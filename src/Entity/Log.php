@@ -8,7 +8,6 @@ use DoctrineEnhanceBundle\Traits\PrimaryKeyAware;
 use DoctrineEnhanceBundle\Traits\TimestampableAware;
 use MarketingPlanBundle\Enum\LogStatus;
 use MarketingPlanBundle\Repository\LogRepository;
-use Symfony\Component\Serializer\Attribute\Groups;
 use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
 use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
 use Tourze\EasyAdmin\Attribute\Action\Creatable;
@@ -29,12 +28,10 @@ class Log
     use TimestampableAware;
 
     #[CreatedByColumn]
-    #[Groups(['restful_read'])]
     #[ORM\Column(nullable: true, options: ['comment' => '创建人'])]
     private ?string $createdBy = null;
 
     #[UpdatedByColumn]
-    #[Groups(['restful_read'])]
     #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
     private ?string $updatedBy = null;
 
