@@ -4,7 +4,6 @@ namespace MarketingPlanBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use DoctrineEnhanceBundle\Repository\CommonRepositoryAware;
 use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Entity\UserProgress;
@@ -18,7 +17,6 @@ use MarketingPlanBundle\Enum\ProgressStatus;
  */
 class UserProgressRepository extends ServiceEntityRepository
 {
-    use CommonRepositoryAware;
 
     public function __construct(ManagerRegistry $registry)
     {

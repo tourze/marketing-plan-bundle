@@ -4,7 +4,6 @@ namespace MarketingPlanBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use DoctrineEnhanceBundle\Repository\CommonRepositoryAware;
 use MarketingPlanBundle\Entity\NodeCondition;
 
 /**
@@ -15,7 +14,6 @@ use MarketingPlanBundle\Entity\NodeCondition;
  */
 class NodeConditionRepository extends ServiceEntityRepository
 {
-    use CommonRepositoryAware;
 
     public function __construct(ManagerRegistry $registry)
     {

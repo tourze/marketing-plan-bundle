@@ -4,7 +4,6 @@ namespace MarketingPlanBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use DoctrineEnhanceBundle\Repository\CommonRepositoryAware;
 use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\NodeStage;
 use MarketingPlanBundle\Enum\NodeStageStatus;
@@ -17,7 +16,6 @@ use MarketingPlanBundle\Enum\NodeStageStatus;
  */
 class NodeStageRepository extends ServiceEntityRepository
 {
-    use CommonRepositoryAware;
 
     public function __construct(ManagerRegistry $registry)
     {

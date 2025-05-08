@@ -4,7 +4,6 @@ namespace MarketingPlanBundle\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use DoctrineEnhanceBundle\Repository\CommonRepositoryAware;
 use MarketingPlanBundle\Entity\Task;
 
 /**
@@ -15,7 +14,6 @@ use MarketingPlanBundle\Entity\Task;
  */
 class TaskRepository extends ServiceEntityRepository
 {
-    use CommonRepositoryAware;
 
     public function __construct(ManagerRegistry $registry)
     {
