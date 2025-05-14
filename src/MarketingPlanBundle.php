@@ -10,7 +10,7 @@ class MarketingPlanBundle extends Bundle implements BundleDependencyInterface
     public static function getBundleDependencies(): array
     {
         return [
-            \UserCrowdBundle\UserCrowdBundle::class => ['all' => true],
+            \Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle::class => ['all' => true],
         ];
     }
 }

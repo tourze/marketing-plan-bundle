@@ -27,7 +27,7 @@ use Tourze\EasyAdmin\Attribute\Field\FormField;
 use Tourze\EasyAdmin\Attribute\Filter\Filterable;
 use Tourze\EasyAdmin\Attribute\Filter\Keyword;
 use Tourze\EasyAdmin\Attribute\Permission\AsPermission;
-use UserCrowdBundle\Entity\Crowd;
+use Tourze\UserTagContracts\TagInterface;
 
 #[AsPermission(title: '自动化流程')]
 #[Deletable]
@@ -81,7 +81,7 @@ class Task
     #[FormField(title: '目标人群')]
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private Crowd $crowd;
+    private TagInterface $crowd;
 
     #[ListColumn]
     #[FormField]
@@ -220,12 +220,12 @@ class Task
         return $this;
     }
 
-    public function getCrowd(): ?Crowd
+    public function getCrowd(): ?TagInterface
     {
         return $this->crowd;
     }
 
-    public function setCrowd(?Crowd $crowd): static
+    public function setCrowd(?TagInterface $crowd): static
     {
         $this->crowd = $crowd;
 

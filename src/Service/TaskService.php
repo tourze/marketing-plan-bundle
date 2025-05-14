@@ -7,15 +7,12 @@ use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\TaskStatus;
-use MarketingPlanBundle\Repository\TaskRepository;
-use UserCrowdBundle\Entity\Crowd;
+use Tourze\UserTagContracts\TagInterface;
 
 class TaskService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly TaskRepository $taskRepository,
-        private readonly UserProgressService $userProgressService,
     ) {
     }
 
@@ -24,7 +21,7 @@ class TaskService
      * 1. 创建任务记录
      * 2. 创建开始和结束节点
      */
-    public function create(string $title, Crowd $crowd, \DateTimeInterface $startTime, \DateTimeInterface $endTime): Task
+    public function create(string $title, TagInterface $crowd, \DateTimeInterface $startTime, \DateTimeInterface $endTime): Task
     {
         $task = new Task();
         $task->setTitle($title)
