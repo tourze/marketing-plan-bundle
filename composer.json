@@ -38,5 +38,10 @@
     "psr-4": {
       "MarketingPlanBundle\\": "src"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "MarketingPlanBundle\\Tests\\": "tests"
+    }
   }
 }
