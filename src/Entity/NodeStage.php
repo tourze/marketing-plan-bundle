@@ -7,12 +7,9 @@ use Doctrine\ORM\Mapping as ORM;
 use MarketingPlanBundle\Enum\DropReason;
 use MarketingPlanBundle\Enum\NodeStageStatus;
 use MarketingPlanBundle\Repository\NodeStageRepository;
-use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\CreateTimeColumn;
-use Tourze\DoctrineTimestampBundle\Attribute\UpdateTimeColumn;
+use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
 use Tourze\EasyAdmin\Attribute\Column\ListColumn;
-use Tourze\EasyAdmin\Attribute\Filter\Filterable;
 
 #[ORM\Entity(repositoryClass: NodeStageRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_stage', options: ['comment' => '节点执行状态'])]
@@ -61,40 +58,7 @@ class NodeStage
     #[ORM\Column(length: 50, enumType: DropReason::class, nullable: true, options: ['comment' => '流失原因'])]
     private ?DropReason $dropReason = null;
 
-    #[Filterable]
-    #[IndexColumn]
-    #[ListColumn(order: 98, sorter: true)]
-    #[ExportColumn]
-    #[CreateTimeColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '创建时间'])]
-    private ?\DateTimeInterface $createTime = null;
-
-    #[UpdateTimeColumn]
-    #[ListColumn(order: 99, sorter: true)]
-    #[Filterable]
-    #[ExportColumn]
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '更新时间'])]
-    private ?\DateTimeInterface $updateTime = null;
-
-    public function setCreateTime(?\DateTimeInterface $createdAt): void
-    {
-        $this->createTime = $createdAt;
-    }
-
-    public function getCreateTime(): ?\DateTimeInterface
-    {
-        return $this->createTime;
-    }
-
-    public function setUpdateTime(?\DateTimeInterface $updateTime): void
-    {
-        $this->updateTime = $updateTime;
-    }
-
-    public function getUpdateTime(): ?\DateTimeInterface
-    {
-        return $this->updateTime;
-    }
+    use TimestampableAware;
 
     public function getUserProgress(): UserProgress
     {
