@@ -9,8 +9,6 @@ use Doctrine\ORM\Mapping as ORM;
 use MarketingPlanBundle\Enum\ProgressStatus;
 use MarketingPlanBundle\Repository\UserProgressRepository;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
 
 #[ORM\Entity(repositoryClass: UserProgressRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_user_progress', options: ['comment' => '用户流程进度'])]
@@ -18,8 +16,6 @@ use Tourze\EasyAdmin\Attribute\Column\ListColumn;
 #[ORM\Index(columns: ['current_node_id', 'status'], name: 'idx_current_node_status')]
 class UserProgress
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]

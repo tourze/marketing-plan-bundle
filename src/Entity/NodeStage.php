@@ -8,8 +8,6 @@ use MarketingPlanBundle\Enum\DropReason;
 use MarketingPlanBundle\Enum\NodeStageStatus;
 use MarketingPlanBundle\Repository\NodeStageRepository;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
 
 #[ORM\Entity(repositoryClass: NodeStageRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_stage', options: ['comment' => '节点执行状态'])]
@@ -17,8 +15,6 @@ use Tourze\EasyAdmin\Attribute\Column\ListColumn;
 #[ORM\Index(columns: ['status'], name: 'idx_status')]
 class NodeStage
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]

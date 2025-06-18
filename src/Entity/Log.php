@@ -9,24 +9,12 @@ use MarketingPlanBundle\Repository\LogRepository;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
 use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
-use Tourze\EasyAdmin\Attribute\Action\Creatable;
-use Tourze\EasyAdmin\Attribute\Action\Deletable;
-use Tourze\EasyAdmin\Attribute\Action\Editable;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
-use Tourze\EasyAdmin\Attribute\Permission\AsPermission;
 
-#[AsPermission(title: '阶段记录')]
-#[Deletable]
-#[Creatable]
-#[Editable]
 #[ORM\Entity(repositoryClass: LogRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_log', options: ['comment' => '阶段记录'])]
 #[ORM\Index(columns: ['task_id', 'user_id', 'create_time'], name: 'ims_marketing_plan_log_idx_task_user_time')]
 class Log
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]

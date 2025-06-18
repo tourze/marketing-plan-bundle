@@ -7,16 +7,11 @@ use Doctrine\ORM\Mapping as ORM;
 use MarketingPlanBundle\Enum\DelayType;
 use MarketingPlanBundle\Repository\NodeDelayRepository;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
-use Tourze\EasyAdmin\Attribute\Field\FormField;
 
 #[ORM\Entity(repositoryClass: NodeDelayRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_delay', options: ['comment' => '节点延时配置'])]
 class NodeDelay
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
@@ -27,18 +22,12 @@ class NodeDelay
         return $this->id;
     }
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(length: 50, enumType: DelayType::class, options: ['comment' => '延时类型'])]
     private DelayType $type = DelayType::MINUTES;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(options: ['comment' => '延时值'])]
     private int $value = 0;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '具体时间'])]
     private ?\DateTimeInterface $specificTime = null;
 

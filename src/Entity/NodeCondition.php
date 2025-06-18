@@ -7,16 +7,11 @@ use Doctrine\ORM\Mapping as ORM;
 use MarketingPlanBundle\Enum\ConditionOperator;
 use MarketingPlanBundle\Repository\NodeConditionRepository;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
-use Tourze\EasyAdmin\Attribute\Field\FormField;
 
 #[ORM\Entity(repositoryClass: NodeConditionRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_condition', options: ['comment' => '节点条件'])]
 class NodeCondition
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
@@ -27,23 +22,15 @@ class NodeCondition
         return $this->id;
     }
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(length: 255, options: ['comment' => '条件名称'])]
     private string $name;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(length: 255, options: ['comment' => '字段'])]
     private string $field;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(length: 50, enumType: ConditionOperator::class, options: ['comment' => '操作符'])]
     private ConditionOperator $operator;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(type: Types::TEXT, options: ['comment' => '值'])]
     private string $value;
 

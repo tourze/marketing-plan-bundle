@@ -12,25 +12,12 @@ use Symfony\Component\Serializer\Attribute\Ignore;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
 use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
-use Tourze\EasyAdmin\Attribute\Action\Creatable;
-use Tourze\EasyAdmin\Attribute\Action\Deletable;
-use Tourze\EasyAdmin\Attribute\Action\Editable;
-use Tourze\EasyAdmin\Attribute\Column\ExportColumn;
-use Tourze\EasyAdmin\Attribute\Column\ListColumn;
-use Tourze\EasyAdmin\Attribute\Field\FormField;
-use Tourze\EasyAdmin\Attribute\Permission\AsPermission;
 use Tourze\ResourceManageBundle\Entity\ResourceConfig;
 
-#[AsPermission(title: '流程节点')]
-#[Deletable]
-#[Creatable]
-#[Editable]
 #[ORM\Entity(repositoryClass: NodeRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node', options: ['comment' => '流程节点'])]
 class Node implements \Stringable
 {
-    #[ListColumn(order: -1)]
-    #[ExportColumn]
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
@@ -49,23 +36,16 @@ class Node implements \Stringable
     #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
     private ?string $updatedBy = null;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(length: 255, options: ['comment' => '节点名称'])]
     private string $name;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(length: 50, enumType: NodeType::class, options: ['comment' => '节点类型'])]
     private NodeType $type;
 
-    #[ListColumn]
-    #[FormField]
     #[ORM\Column(options: ['comment' => '序号'])]
     private int $sequence = 1;
 
     #[ORM\Embedded(class: ResourceConfig::class)]
-    #[FormField(title: '资源配置')]
     private ?ResourceConfig $resource = null;
 
     #[ORM\OneToMany(mappedBy: 'node', targetEntity: NodeCondition::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
