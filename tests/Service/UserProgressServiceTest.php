@@ -147,7 +147,7 @@ class UserProgressServiceTest extends TestCase
             
         $stage->expects($this->once())
             ->method('setTouchTime')
-            ->with($this->isInstanceOf(\DateTime::class));
+            ->with($this->isInstanceOf(\DateTimeImmutable::class));
             
         $this->entityManager->expects($this->once())
             ->method('flush');
@@ -222,7 +222,7 @@ class UserProgressServiceTest extends TestCase
             
         $stage->expects($this->once())
             ->method('setActiveTime')
-            ->with($this->isInstanceOf(\DateTime::class));
+            ->with($this->isInstanceOf(\DateTimeImmutable::class));
             
         $progress->expects($this->once())
             ->method('setStatus')
@@ -231,7 +231,7 @@ class UserProgressServiceTest extends TestCase
             
         $progress->expects($this->once())
             ->method('setFinishTime')
-            ->with($this->isInstanceOf(\DateTime::class))
+            ->with($this->isInstanceOf(\DateTimeImmutable::class))
             ->willReturnSelf();
             
         $this->entityManager->expects($this->once())
@@ -263,7 +263,7 @@ class UserProgressServiceTest extends TestCase
             
         $stage->expects($this->once())
             ->method('setActiveTime')
-            ->with($this->isInstanceOf(\DateTime::class));
+            ->with($this->isInstanceOf(\DateTimeImmutable::class));
             
         $progress->expects($this->never())
             ->method('setStatus');
@@ -342,7 +342,7 @@ class UserProgressServiceTest extends TestCase
             
         $stage->expects($this->once())
             ->method('setDropTime')
-            ->with($this->isInstanceOf(\DateTime::class))
+            ->with($this->isInstanceOf(\DateTimeImmutable::class))
             ->willReturnSelf();
             
         $stage->expects($this->once())

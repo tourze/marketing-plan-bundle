@@ -11,7 +11,6 @@ use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\ConditionOperator;
 use MarketingPlanBundle\Enum\DelayType;
 use MarketingPlanBundle\Enum\NodeType;
-use MarketingPlanBundle\Repository\NodeRepository;
 use MarketingPlanBundle\Service\NodeService;
 use PHPUnit\Framework\TestCase;
 
@@ -32,14 +31,12 @@ class TestArrayCollection extends ArrayCollection
 class NodeServiceTest extends TestCase
 {
     private EntityManagerInterface $entityManager;
-    private NodeRepository $nodeRepository;
     private NodeService $nodeService;
 
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->nodeRepository = $this->createMock(NodeRepository::class);
-        $this->nodeService = new NodeService($this->entityManager, $this->nodeRepository);
+        $this->nodeService = new NodeService($this->entityManager);
     }
 
     public function testCreate_createNodeWithNextSequence(): void

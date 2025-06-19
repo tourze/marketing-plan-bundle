@@ -26,8 +26,8 @@ class TaskService
         $task = new Task();
         $task->setTitle($title)
             ->setCrowd($crowd)
-            ->setStartTime($startTime)
-            ->setEndTime($endTime)
+            ->setStartTime(\DateTimeImmutable::createFromInterface($startTime))
+            ->setEndTime(\DateTimeImmutable::createFromInterface($endTime))
             ->setStatus(TaskStatus::DRAFT);
 
         // 创建开始节点

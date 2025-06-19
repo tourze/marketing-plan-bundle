@@ -11,11 +11,12 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
-    name: 'marketing-plan:check-node-timeout',
+    name: self::NAME,
     description: '检查节点超时状态，标记流失用户',
 )]
 class CheckNodeTimeoutCommand extends Command
 {
+    public const NAME = 'marketing-plan:check-node-timeout';
     public function __construct(
         private readonly NodeRepository $nodeRepository,
         private readonly UserProgressService $userProgressService,
@@ -25,7 +26,7 @@ class CheckNodeTimeoutCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $now = new \DateTime();
+        $now = new \DateTimeImmutable();
         $nodes = $this->nodeRepository->findAll();
 
         foreach ($nodes as $node) {
@@ -45,9 +46,9 @@ class CheckNodeTimeoutCommand extends Command
             } else {
                 // 处理其他类型的延时
                 $beforeTime = match ($delay->getType()) {
-                    DelayType::MINUTES => (clone $now)->modify('-' . $delay->getValue() . ' minutes'),
-                    DelayType::HOURS => (clone $now)->modify('-' . $delay->getValue() . ' hours'),
-                    DelayType::DAYS => (clone $now)->modify('-' . $delay->getValue() . ' days'),
+                    DelayType::MINUTES => $now->modify('-' . $delay->getValue() . ' minutes'),
+                    DelayType::HOURS => $now->modify('-' . $delay->getValue() . ' hours'),
+                    DelayType::DAYS => $now->modify('-' . $delay->getValue() . ' days'),
                 };
             }
 

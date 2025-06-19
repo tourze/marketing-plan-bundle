@@ -7,13 +7,12 @@ use Doctrine\ORM\Mapping as ORM;
 use MarketingPlanBundle\Enum\LogStatus;
 use MarketingPlanBundle\Repository\LogRepository;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
-use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
-use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
+use Tourze\DoctrineUserBundle\Traits\BlameableAware;
 
 #[ORM\Entity(repositoryClass: LogRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_log', options: ['comment' => '阶段记录'])]
 #[ORM\Index(columns: ['task_id', 'user_id', 'create_time'], name: 'ims_marketing_plan_log_idx_task_user_time')]
-class Log
+class Log implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -25,13 +24,7 @@ class Log
         return $this->id;
     }
 
-    #[CreatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '创建人'])]
-    private ?string $createdBy = null;
-
-    #[UpdatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
-    private ?string $updatedBy = null;
+    use BlameableAware;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -46,8 +39,8 @@ class Log
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['comment' => '上下文数据'])]
     private ?array $context = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '完成时间'])]
-    private ?\DateTimeInterface $completeTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '完成时间'])]
+    private ?\DateTimeImmutable $completeTime = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true, options: ['comment' => '失败原因'])]
     private ?string $failureReason = null;
@@ -57,29 +50,11 @@ class Log
 
     use TimestampableAware;
 
-    public function setCreatedBy(?string $createdBy): self
+    public function __toString(): string
     {
-        $this->createdBy = $createdBy;
-
-        return $this;
+        return "Log #{$this->id} - {$this->status->value}";
     }
 
-    public function getCreatedBy(): ?string
-    {
-        return $this->createdBy;
-    }
-
-    public function setUpdatedBy(?string $updatedBy): self
-    {
-        $this->updatedBy = $updatedBy;
-
-        return $this;
-    }
-
-    public function getUpdatedBy(): ?string
-    {
-        return $this->updatedBy;
-    }
 
     public function getTask(): Task
     {
@@ -129,12 +104,12 @@ class Log
         return $this;
     }
 
-    public function getCompleteTime(): ?\DateTimeInterface
+    public function getCompleteTime(): ?\DateTimeImmutable
     {
         return $this->completeTime;
     }
 
-    public function setCompleteTime(?\DateTimeInterface $completeTime): static
+    public function setCompleteTime(?\DateTimeImmutable $completeTime): static
     {
         $this->completeTime = $completeTime;
 

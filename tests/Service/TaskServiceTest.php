@@ -253,7 +253,7 @@ class TaskServiceTest extends TestCase
         // 创建部分模拟对象，同时允许自定义其他方法
         $task = $this->createPartialMock(Task::class, ['getStatus', 'getStartTime', 'getEndTime', 'setStatus', 'getNodes']);
         $task->method('getStatus')->willReturn(TaskStatus::DRAFT);
-        $task->method('getStartTime')->willReturn(new \DateTime('yesterday'));
+        $task->method('getStartTime')->willReturn(new \DateTimeImmutable('yesterday'));
         
         // 设置getNodes方法的行为
         $startNode = $this->createMock(Node::class);
@@ -289,7 +289,7 @@ class TaskServiceTest extends TestCase
         // Arrange
         $task = $this->createPartialMock(Task::class, ['getStatus', 'getStartTime', 'getEndTime', 'setStatus']);
         $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
-        $task->method('getEndTime')->willReturn(new \DateTime('yesterday'));
+        $task->method('getEndTime')->willReturn(new \DateTimeImmutable('yesterday'));
         
         $task->expects($this->once())
             ->method('setStatus')
@@ -310,7 +310,7 @@ class TaskServiceTest extends TestCase
         // Arrange
         $task = $this->createPartialMock(Task::class, ['getStatus', 'getStartTime', 'getEndTime', 'setStatus']);
         $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
-        $task->method('getEndTime')->willReturn(new \DateTime('tomorrow'));
+        $task->method('getEndTime')->willReturn(new \DateTimeImmutable('tomorrow'));
         
         $task->expects($this->never())
             ->method('setStatus');

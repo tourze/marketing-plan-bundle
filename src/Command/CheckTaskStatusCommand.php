@@ -10,11 +10,12 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
-    name: 'marketing-plan:check-task-status',
+    name: self::NAME,
     description: '检查任务状态，自动开始和结束任务',
 )]
 class CheckTaskStatusCommand extends Command
 {
+    public const NAME = 'marketing-plan:check-task-status';
     public function __construct(
         private readonly TaskRepository $taskRepository,
         private readonly TaskService $taskService,

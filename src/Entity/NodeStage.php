@@ -13,7 +13,7 @@ use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 #[ORM\Table(name: 'ims_marketing_plan_node_stage', options: ['comment' => '节点执行状态'])]
 #[ORM\Index(columns: ['user_progress_id', 'node_id'], name: 'idx_progress_node')]
 #[ORM\Index(columns: ['status'], name: 'idx_status')]
-class NodeStage
+class NodeStage implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -36,25 +36,30 @@ class NodeStage
     #[ORM\Column(length: 50, enumType: NodeStageStatus::class, options: ['comment' => '状态'])]
     private NodeStageStatus $status = NodeStageStatus::PENDING;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, options: ['comment' => '进入节点时间'])]
-    private \DateTimeInterface $reachTime;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ['comment' => '进入节点时间'])]
+    private \DateTimeImmutable $reachTime;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '触达时间'])]
-    private ?\DateTimeInterface $touchTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '触达时间'])]
+    private ?\DateTimeImmutable $touchTime = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '激活时间'])]
-    private ?\DateTimeInterface $activeTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '激活时间'])]
+    private ?\DateTimeImmutable $activeTime = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '完成时间'])]
-    private ?\DateTimeInterface $finishTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '完成时间'])]
+    private ?\DateTimeImmutable $finishTime = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '流失时间'])]
-    private ?\DateTimeInterface $dropTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '流失时间'])]
+    private ?\DateTimeImmutable $dropTime = null;
 
     #[ORM\Column(length: 50, enumType: DropReason::class, nullable: true, options: ['comment' => '流失原因'])]
     private ?DropReason $dropReason = null;
 
     use TimestampableAware;
+
+    public function __toString(): string
+    {
+        return "NodeStage #{$this->id} - {$this->status->value}";
+    }
 
     public function getUserProgress(): UserProgress
     {
@@ -92,60 +97,60 @@ class NodeStage
         return $this;
     }
 
-    public function getReachTime(): \DateTimeInterface
+    public function getReachTime(): \DateTimeImmutable
     {
         return $this->reachTime;
     }
 
-    public function setReachTime(\DateTimeInterface $reachTime): static
+    public function setReachTime(\DateTimeImmutable $reachTime): static
     {
         $this->reachTime = $reachTime;
 
         return $this;
     }
 
-    public function getTouchTime(): ?\DateTimeInterface
+    public function getTouchTime(): ?\DateTimeImmutable
     {
         return $this->touchTime;
     }
 
-    public function setTouchTime(?\DateTimeInterface $touchTime): static
+    public function setTouchTime(?\DateTimeImmutable $touchTime): static
     {
         $this->touchTime = $touchTime;
 
         return $this;
     }
 
-    public function getActiveTime(): ?\DateTimeInterface
+    public function getActiveTime(): ?\DateTimeImmutable
     {
         return $this->activeTime;
     }
 
-    public function setActiveTime(?\DateTimeInterface $activeTime): static
+    public function setActiveTime(?\DateTimeImmutable $activeTime): static
     {
         $this->activeTime = $activeTime;
 
         return $this;
     }
 
-    public function getFinishTime(): ?\DateTimeInterface
+    public function getFinishTime(): ?\DateTimeImmutable
     {
         return $this->finishTime;
     }
 
-    public function setFinishTime(?\DateTimeInterface $finishTime): static
+    public function setFinishTime(?\DateTimeImmutable $finishTime): static
     {
         $this->finishTime = $finishTime;
 
         return $this;
     }
 
-    public function getDropTime(): ?\DateTimeInterface
+    public function getDropTime(): ?\DateTimeImmutable
     {
         return $this->dropTime;
     }
 
-    public function setDropTime(?\DateTimeInterface $dropTime): static
+    public function setDropTime(?\DateTimeImmutable $dropTime): static
     {
         $this->dropTime = $dropTime;
 

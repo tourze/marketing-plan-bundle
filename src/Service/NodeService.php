@@ -10,13 +10,11 @@ use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\ConditionOperator;
 use MarketingPlanBundle\Enum\DelayType;
 use MarketingPlanBundle\Enum\NodeType;
-use MarketingPlanBundle\Repository\NodeRepository;
 
 class NodeService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly NodeRepository $nodeRepository,
     ) {
     }
 
@@ -26,9 +24,10 @@ class NodeService
     public function create(Task $task, string $name, NodeType $type): Node
     {
         // 计算序号
-        $maxSequence = $task->getNodes()
+        $sequences = $task->getNodes()
             ->map(fn (Node $node) => $node->getSequence())
-            ->max();
+            ->toArray();
+        $maxSequence = count($sequences) > 0 ? max($sequences) : 0;
 
         $node = new Node();
         $node->setName($name)
@@ -67,7 +66,7 @@ class NodeService
     {
         $delay = $node->getDelay() ?? new NodeDelay();
         $delay->setType($type)
-            ->setValue($value)
+            ->setValue((int) $value)
             ->setNode($node);
 
         if (null === $node->getDelay()) {
@@ -93,9 +92,10 @@ class NodeService
             throw new \InvalidArgumentException('Sequence must be greater than 0');
         }
 
-        $maxSequence = $task->getNodes()
+        $sequences = $task->getNodes()
             ->map(fn (Node $node) => $node->getSequence())
-            ->max();
+            ->toArray();
+        $maxSequence = count($sequences) > 0 ? max($sequences) : 0;
 
         if ($sequence > $maxSequence) {
             throw new \InvalidArgumentException('Sequence must be less than or equal to ' . $maxSequence);

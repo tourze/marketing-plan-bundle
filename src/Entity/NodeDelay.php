@@ -10,7 +10,7 @@ use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 
 #[ORM\Entity(repositoryClass: NodeDelayRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_delay', options: ['comment' => '节点延时配置'])]
-class NodeDelay
+class NodeDelay implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -28,8 +28,8 @@ class NodeDelay
     #[ORM\Column(options: ['comment' => '延时值'])]
     private int $value = 0;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '具体时间'])]
-    private ?\DateTimeInterface $specificTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '具体时间'])]
+    private ?\DateTimeImmutable $specificTime = null;
 
     #[ORM\OneToOne(inversedBy: 'delay')]
     #[ORM\JoinColumn(nullable: false)]
@@ -41,6 +41,14 @@ class NodeDelay
     {
         $this->type = DelayType::MINUTES;
         $this->value = 0;
+    }
+
+    public function __toString(): string
+    {
+        if ($this->type === DelayType::SPECIFIC_TIME && null !== $this->specificTime) {
+            return "延时至 {$this->specificTime->format('Y-m-d H:i:s')}";
+        }
+        return "{$this->value} {$this->type->getLabel()}";
     }
 
     public function getType(): DelayType
@@ -67,12 +75,12 @@ class NodeDelay
         return $this;
     }
 
-    public function getSpecificTime(): ?\DateTimeInterface
+    public function getSpecificTime(): ?\DateTimeImmutable
     {
         return $this->specificTime;
     }
 
-    public function setSpecificTime(?\DateTimeInterface $specificTime): static
+    public function setSpecificTime(?\DateTimeImmutable $specificTime): static
     {
         $this->specificTime = $specificTime;
 

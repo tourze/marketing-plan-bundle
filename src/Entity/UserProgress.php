@@ -14,7 +14,7 @@ use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 #[ORM\Table(name: 'ims_marketing_plan_user_progress', options: ['comment' => '用户流程进度'])]
 #[ORM\UniqueConstraint(columns: ['task_id', 'user_id'])]
 #[ORM\Index(columns: ['current_node_id', 'status'], name: 'idx_current_node_status')]
-class UserProgress
+class UserProgress implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -40,11 +40,11 @@ class UserProgress
     #[ORM\Column(length: 50, enumType: ProgressStatus::class, options: ['comment' => '当前状态'])]
     private ProgressStatus $status = ProgressStatus::PENDING;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, options: ['comment' => '开始时间'])]
-    private \DateTimeInterface $startTime;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ['comment' => '开始时间'])]
+    private \DateTimeImmutable $startTime;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => '完成时间'])]
-    private ?\DateTimeInterface $finishTime = null;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '完成时间'])]
+    private ?\DateTimeImmutable $finishTime = null;
 
     /**
      * @var Collection<int, NodeStage>
@@ -58,6 +58,11 @@ class UserProgress
     public function __construct()
     {
         $this->stages = new ArrayCollection();
+    }
+
+    public function __toString(): string
+    {
+        return "UserProgress #{$this->id} - User: {$this->userId} - Status: {$this->status->value}";
     }
 
     public function getTask(): Task
@@ -108,24 +113,24 @@ class UserProgress
         return $this;
     }
 
-    public function getStartTime(): \DateTimeInterface
+    public function getStartTime(): \DateTimeImmutable
     {
         return $this->startTime;
     }
 
-    public function setStartTime(\DateTimeInterface $startTime): static
+    public function setStartTime(\DateTimeImmutable $startTime): static
     {
         $this->startTime = $startTime;
 
         return $this;
     }
 
-    public function getFinishTime(): ?\DateTimeInterface
+    public function getFinishTime(): ?\DateTimeImmutable
     {
         return $this->finishTime;
     }
 
-    public function setFinishTime(?\DateTimeInterface $finishTime): static
+    public function setFinishTime(?\DateTimeImmutable $finishTime): static
     {
         $this->finishTime = $finishTime;
 
@@ -153,9 +158,8 @@ class UserProgress
     public function removeStage(NodeStage $stage): static
     {
         if ($this->stages->removeElement($stage)) {
-            if ($stage->getUserProgress() === $this) {
-                $stage->setUserProgress(null);
-            }
+            // NodeStage's userProgress property is not nullable, so we can't set it to null
+            // The stage will be orphaned and removed by Doctrine's orphanRemoval
         }
 
         return $this;

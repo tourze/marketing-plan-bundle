@@ -53,14 +53,14 @@ class UserProgressService
             ->setUserId($userId)
             ->setCurrentNode($firstNode)
             ->setStatus(ProgressStatus::RUNNING)
-            ->setStartTime(new \DateTime());
+            ->setStartTime(new \DateTimeImmutable());
 
         // 创建第一个节点的状态
         $stage = new NodeStage();
         $stage->setNode($firstNode)
             ->setUserProgress($progress)
             ->setStatus(NodeStageStatus::RUNNING)
-            ->setReachTime(new \DateTime());
+            ->setReachTime(new \DateTimeImmutable());
 
         $progress->addStage($stage);
 
@@ -87,7 +87,7 @@ class UserProgressService
             return;
         }
 
-        $stage->setTouchTime(new \DateTime());
+        $stage->setTouchTime(new \DateTimeImmutable());
         $this->entityManager->flush();
     }
 
@@ -108,12 +108,12 @@ class UserProgressService
             return;
         }
 
-        $stage->setActiveTime(new \DateTime());
+        $stage->setActiveTime(new \DateTimeImmutable());
 
         // 如果是最后一个节点，标记流程完成
         if (NodeType::END === $node->getType()) {
             $progress->setStatus(ProgressStatus::FINISHED)
-                ->setFinishTime(new \DateTime());
+                ->setFinishTime(new \DateTimeImmutable());
         }
 
         $this->entityManager->flush();
@@ -136,7 +136,7 @@ class UserProgressService
             return;
         }
 
-        $stage->setDropTime(new \DateTime())
+        $stage->setDropTime(new \DateTimeImmutable())
             ->setDropReason($reason)
             ->setStatus(NodeStageStatus::DROPPED);
 
@@ -174,7 +174,7 @@ class UserProgressService
         $stage->setNode($nextNode)
             ->setUserProgress($progress)
             ->setStatus(NodeStageStatus::RUNNING)
-            ->setReachTime(new \DateTime());
+            ->setReachTime(new \DateTimeImmutable());
 
         $progress->addStage($stage)
             ->setCurrentNode($nextNode);
@@ -211,10 +211,10 @@ class UserProgressService
 
         // TODO: 检查条件是否满足
         // 这里需要实现条件检查的逻辑
-        $conditionsMet = true;
-
-        if (!$conditionsMet) {
-            $this->markDropped($progress, $node, DropReason::CONDITION_NOT_MET);
-        }
+        // 目前暂时假设所有条件都满足，后续需要根据实际业务逻辑实现
+        // $conditionsMet = $this->checkNodeConditions($node, $progress);
+        // if (!$conditionsMet) {
+        //     $this->markDropped($progress, $node, DropReason::CONDITION_NOT_MET);
+        // }
     }
 }

@@ -10,7 +10,7 @@ use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 
 #[ORM\Entity(repositoryClass: NodeConditionRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_condition', options: ['comment' => '节点条件'])]
-class NodeCondition
+class NodeCondition implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -39,6 +39,11 @@ class NodeCondition
     private Node $node;
 
     use TimestampableAware;
+
+    public function __toString(): string
+    {
+        return "{$this->name} ({$this->field} {$this->operator->value} {$this->value})";
+    }
 
     public function getName(): string
     {

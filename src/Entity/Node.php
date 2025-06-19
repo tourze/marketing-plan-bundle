@@ -10,8 +10,7 @@ use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Repository\NodeRepository;
 use Symfony\Component\Serializer\Attribute\Ignore;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
-use Tourze\DoctrineUserBundle\Attribute\CreatedByColumn;
-use Tourze\DoctrineUserBundle\Attribute\UpdatedByColumn;
+use Tourze\DoctrineUserBundle\Traits\BlameableAware;
 use Tourze\ResourceManageBundle\Entity\ResourceConfig;
 
 #[ORM\Entity(repositoryClass: NodeRepository::class)]
@@ -28,13 +27,7 @@ class Node implements \Stringable
         return $this->id;
     }
 
-    #[CreatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '创建人'])]
-    private ?string $createdBy = null;
-
-    #[UpdatedByColumn]
-    #[ORM\Column(nullable: true, options: ['comment' => '更新人'])]
-    private ?string $updatedBy = null;
+    use BlameableAware;
 
     #[ORM\Column(length: 255, options: ['comment' => '节点名称'])]
     private string $name;
@@ -68,35 +61,11 @@ class Node implements \Stringable
 
     public function __toString(): string
     {
-        if (!$this->getId()) {
+        if (null === $this->getId() || 0 === $this->getId()) {
             return '';
         }
 
         return "{$this->getName()} ({$this->getType()->getLabel()})";
-    }
-
-    public function setCreatedBy(?string $createdBy): self
-    {
-        $this->createdBy = $createdBy;
-
-        return $this;
-    }
-
-    public function getCreatedBy(): ?string
-    {
-        return $this->createdBy;
-    }
-
-    public function setUpdatedBy(?string $updatedBy): self
-    {
-        $this->updatedBy = $updatedBy;
-
-        return $this;
-    }
-
-    public function getUpdatedBy(): ?string
-    {
-        return $this->updatedBy;
     }
 
     public function getName(): string
@@ -168,9 +137,8 @@ class Node implements \Stringable
     public function removeCondition(NodeCondition $condition): static
     {
         if ($this->conditions->removeElement($condition)) {
-            if ($condition->getNode() === $this) {
-                $condition->setNode(null);
-            }
+            // NodeCondition's node property is not nullable, so we can't set it to null
+            // The condition will be orphaned and removed by Doctrine's orphanRemoval
         }
 
         return $this;
