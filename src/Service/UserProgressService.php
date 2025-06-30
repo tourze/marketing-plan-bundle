@@ -11,6 +11,7 @@ use MarketingPlanBundle\Enum\DropReason;
 use MarketingPlanBundle\Enum\NodeStageStatus;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\ProgressStatus;
+use MarketingPlanBundle\Exception\UserProgressException;
 use MarketingPlanBundle\Repository\NodeStageRepository;
 use MarketingPlanBundle\Repository\UserProgressRepository;
 
@@ -20,8 +21,7 @@ class UserProgressService
         private readonly EntityManagerInterface $entityManager,
         private readonly UserProgressRepository $userProgressRepository,
         private readonly NodeStageRepository $nodeStageRepository,
-    ) {
-    }
+    ) {}
 
     /**
      * 创建用户进度
@@ -44,7 +44,7 @@ class UserProgressService
         // 获取第一个节点
         $firstNode = $task->getNodes()->first();
         if (false === $firstNode) {
-            throw new \RuntimeException('Task has no nodes');
+            throw new UserProgressException('Task has no nodes');
         }
 
         // 创建进度
@@ -80,7 +80,7 @@ class UserProgressService
     {
         $stage = $progress->getNodeStage($node);
         if (null === $stage) {
-            throw new \RuntimeException('Node stage not found');
+            throw new UserProgressException('Node stage not found');
         }
 
         if ($stage->isTouched()) {
@@ -101,7 +101,7 @@ class UserProgressService
     {
         $stage = $progress->getNodeStage($node);
         if (null === $stage) {
-            throw new \RuntimeException('Node stage not found');
+            throw new UserProgressException('Node stage not found');
         }
 
         if ($stage->isActivated()) {
@@ -129,7 +129,7 @@ class UserProgressService
     {
         $stage = $progress->getNodeStage($node);
         if (null === $stage) {
-            throw new \RuntimeException('Node stage not found');
+            throw new UserProgressException('Node stage not found');
         }
 
         if ($stage->isDropped()) {
@@ -157,16 +157,16 @@ class UserProgressService
         $currentStage = $progress->getNodeStage($currentNode);
 
         if (null === $currentStage || !$currentStage->isActivated()) {
-            throw new \RuntimeException('Current node not activated');
+            throw new UserProgressException('Current node not activated');
         }
 
         // 获取下一个节点
         $nextNode = $currentNode->getTask()->getNodes()
-            ->filter(fn (Node $node) => $node->getSequence() > $currentNode->getSequence())
+            ->filter(fn(Node $node) => $node->getSequence() > $currentNode->getSequence())
             ->first();
 
         if (false === $nextNode) {
-            throw new \RuntimeException('No next node found');
+            throw new UserProgressException('No next node found');
         }
 
         // 创建新节点的状态

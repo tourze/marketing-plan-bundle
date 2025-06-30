@@ -124,7 +124,7 @@ class UserProgressServiceTest extends TestCase
         $this->userProgressRepository->method('findOneBy')
             ->willReturn(null);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
         $this->expectExceptionMessage('Task has no nodes');
 
         // Act
@@ -169,7 +169,7 @@ class UserProgressServiceTest extends TestCase
             ->with($node)
             ->willReturn(null);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
         $this->expectExceptionMessage('Node stage not found');
 
         // Act
@@ -291,7 +291,7 @@ class UserProgressServiceTest extends TestCase
             ->with($node)
             ->willReturn(null);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
         $this->expectExceptionMessage('Node stage not found');
 
         // Act
@@ -380,7 +380,7 @@ class UserProgressServiceTest extends TestCase
             ->with($node)
             ->willReturn(null);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
         $this->expectExceptionMessage('Node stage not found');
 
         // Act
@@ -505,7 +505,7 @@ class UserProgressServiceTest extends TestCase
         $currentStage->method('isActivated')
             ->willReturn(false);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
         $this->expectExceptionMessage('Current node not activated');
 
         // Act
@@ -557,7 +557,7 @@ class UserProgressServiceTest extends TestCase
         $task->method('getNodes')
             ->willReturn($nodes);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
         $this->expectExceptionMessage('No next node found');
 
         // Act

@@ -14,19 +14,7 @@ use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Service\NodeService;
 use PHPUnit\Framework\TestCase;
 
-/**
- * 自定义ArrayCollection，添加max方法
- */
-class TestArrayCollection extends ArrayCollection
-{
-    public function max()
-    {
-        if ($this->isEmpty()) {
-            return 0;
-        }
-        return max($this->toArray());
-    }
-}
+
 
 class NodeServiceTest extends TestCase
 {
@@ -223,7 +211,7 @@ class NodeServiceTest extends TestCase
         $node = $this->createMock(Node::class);
         $node->method('getTask')->willReturn($task);
         
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
         $this->expectExceptionMessage('Sequence must be greater than 0');
 
         // Act
@@ -252,7 +240,7 @@ class NodeServiceTest extends TestCase
         
         $task->method('getNodes')->willReturn($nodes);
         
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
         $this->expectExceptionMessage('Sequence must be less than or equal to 3');
 
         // Act
@@ -282,7 +270,7 @@ class NodeServiceTest extends TestCase
         
         $task->method('getNodes')->willReturn($nodes);
         
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
         $this->expectExceptionMessage('START node must be the first node');
 
         // Act
@@ -312,7 +300,7 @@ class NodeServiceTest extends TestCase
         
         $task->method('getNodes')->willReturn($nodes);
         
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
         $this->expectExceptionMessage('END node must be the last node');
 
         // Act
@@ -367,7 +355,7 @@ class NodeServiceTest extends TestCase
         $node = $this->createMock(Node::class);
         $node->method('getType')->willReturn(NodeType::START);
         
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\NodeException::class);
         $this->expectExceptionMessage('Cannot delete START node');
 
         // Act
@@ -380,7 +368,7 @@ class NodeServiceTest extends TestCase
         $node = $this->createMock(Node::class);
         $node->method('getType')->willReturn(NodeType::END);
         
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\NodeException::class);
         $this->expectExceptionMessage('Cannot delete END node');
 
         // Act

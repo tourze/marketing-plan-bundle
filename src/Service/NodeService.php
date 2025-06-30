@@ -10,13 +10,14 @@ use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\ConditionOperator;
 use MarketingPlanBundle\Enum\DelayType;
 use MarketingPlanBundle\Enum\NodeType;
+use MarketingPlanBundle\Exception\InvalidArgumentException;
+use MarketingPlanBundle\Exception\NodeException;
 
 class NodeService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     /**
      * 创建节点
@@ -25,7 +26,7 @@ class NodeService
     {
         // 计算序号
         $sequences = $task->getNodes()
-            ->map(fn (Node $node) => $node->getSequence())
+            ->map(fn(Node $node) => $node->getSequence())
             ->toArray();
         $maxSequence = count($sequences) > 0 ? max($sequences) : 0;
 
@@ -89,26 +90,26 @@ class NodeService
 
         // 检查序号是否合法
         if ($sequence < 1) {
-            throw new \InvalidArgumentException('Sequence must be greater than 0');
+            throw new InvalidArgumentException('Sequence must be greater than 0');
         }
 
         $sequences = $task->getNodes()
-            ->map(fn (Node $node) => $node->getSequence())
+            ->map(fn(Node $node) => $node->getSequence())
             ->toArray();
         $maxSequence = count($sequences) > 0 ? max($sequences) : 0;
 
         if ($sequence > $maxSequence) {
-            throw new \InvalidArgumentException('Sequence must be less than or equal to ' . $maxSequence);
+            throw new InvalidArgumentException('Sequence must be less than or equal to ' . $maxSequence);
         }
 
         // 如果是开始节点，必须是第一个
         if (NodeType::START === $node->getType() && 1 !== $sequence) {
-            throw new \InvalidArgumentException('START node must be the first node');
+            throw new InvalidArgumentException('START node must be the first node');
         }
 
         // 如果是结束节点，必须是最后一个
         if (NodeType::END === $node->getType() && $sequence !== $maxSequence) {
-            throw new \InvalidArgumentException('END node must be the last node');
+            throw new InvalidArgumentException('END node must be the last node');
         }
 
         // 更新序号
@@ -143,11 +144,11 @@ class NodeService
     {
         // 检查是否可以删除
         if (NodeType::START === $node->getType()) {
-            throw new \RuntimeException('Cannot delete START node');
+            throw new NodeException('Cannot delete START node');
         }
 
         if (NodeType::END === $node->getType()) {
-            throw new \RuntimeException('Cannot delete END node');
+            throw new NodeException('Cannot delete END node');
         }
 
         $sequence = $node->getSequence();

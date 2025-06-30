@@ -50,7 +50,7 @@ class UserProgress implements \Stringable
      * @var Collection<int, NodeStage>
      */
     #[ORM\OneToMany(mappedBy: 'userProgress', targetEntity: NodeStage::class, cascade: ['persist', 'remove'])]
-    #[ORM\OrderBy(['reachTime' => 'ASC'])]
+    #[ORM\OrderBy(value: ['reachTime' => 'ASC'])]
     private Collection $stages;
 
     use TimestampableAware;

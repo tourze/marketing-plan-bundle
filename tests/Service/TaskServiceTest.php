@@ -95,7 +95,7 @@ class TaskServiceTest extends TestCase
         
         $task->method('getNodes')->willReturn($nodes);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
         $this->expectExceptionMessage('Task must have START and END nodes');
 
         // Act
@@ -116,7 +116,7 @@ class TaskServiceTest extends TestCase
         
         $task->method('getNodes')->willReturn($nodes);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
         $this->expectExceptionMessage('Task must have START and END nodes');
 
         // Act
@@ -141,7 +141,7 @@ class TaskServiceTest extends TestCase
         
         $task->method('getNodes')->willReturn($nodes);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
         $this->expectExceptionMessage('Node sequences must be continuous');
 
         // Act
@@ -174,7 +174,7 @@ class TaskServiceTest extends TestCase
         $task = $this->createMock(Task::class);
         $task->method('getStatus')->willReturn(TaskStatus::DRAFT);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
         $this->expectExceptionMessage('Task is not running');
 
         // Act
@@ -207,7 +207,7 @@ class TaskServiceTest extends TestCase
         $task = $this->createMock(Task::class);
         $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
         $this->expectExceptionMessage('Task is not paused');
 
         // Act
@@ -240,7 +240,7 @@ class TaskServiceTest extends TestCase
         $task = $this->createMock(Task::class);
         $task->method('getStatus')->willReturn(TaskStatus::PAUSED);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
         $this->expectExceptionMessage('Task is not running');
 
         // Act

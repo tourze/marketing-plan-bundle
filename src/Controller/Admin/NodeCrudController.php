@@ -42,7 +42,7 @@ class NodeCrudController extends AbstractCrudController
 
     public function configureFields(string $pageName): iterable
     {
-        yield FormField::addPanel('基本信息');
+        yield FormField::addFieldset('基本信息');
         yield TextField::new('name', '节点名称');
         yield ChoiceField::new('type', '节点类型')
             ->setChoices(NodeType::cases())
@@ -52,7 +52,7 @@ class NodeCrudController extends AbstractCrudController
             ]);
         yield IntegerField::new('sequence', '序号');
 
-        yield FormField::addPanel('资源配置');
+        yield FormField::addFieldset('资源配置');
         yield ChoiceField::new('resource.type', '资源类型')
             ->setChoices(array_combine(
                 array_column($this->resourceManager->genSelectData(), 'label'),
@@ -63,14 +63,14 @@ class NodeCrudController extends AbstractCrudController
         yield IntegerField::new('resource.expireDay', '有效天数');
         yield DateTimeField::new('resource.expireTime', '到期时间');
 
-        yield FormField::addPanel('条件配置');
+        yield FormField::addFieldset('条件配置');
         yield CollectionField::new('conditions', '条件')
             ->useEntryCrudForm(NodeConditionCrudController::class)
             ->setEntryIsComplex(true)
             ->allowAdd()
             ->allowDelete();
 
-        yield FormField::addPanel('延时配置');
+        yield FormField::addFieldset('延时配置');
         yield ChoiceField::new('delay.type', '延时类型')
             ->setChoices(DelayType::cases())
             ->setFormTypeOptions([

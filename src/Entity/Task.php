@@ -10,7 +10,7 @@ use MarketingPlanBundle\Enum\TaskStatus;
 use MarketingPlanBundle\Repository\TaskRepository;
 use Symfony\Component\Serializer\Attribute\Ignore;
 use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
-use Tourze\DoctrineSnowflakeBundle\Service\SnowflakeIdGenerator;
+use Tourze\DoctrineSnowflakeBundle\Traits\SnowflakeKeyAware;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 use Tourze\DoctrineTrackBundle\Attribute\TrackColumn;
 use Tourze\DoctrineUserBundle\Traits\BlameableAware;
@@ -20,12 +20,7 @@ use Tourze\UserTagContracts\TagInterface;
 #[ORM\Table(name: 'ims_marketing_plan_task', options: ['comment' => '自动化流程'])]
 class Task implements \Stringable
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
-    #[ORM\CustomIdGenerator(SnowflakeIdGenerator::class)]
-    #[ORM\Column(type: Types::BIGINT, nullable: false, options: ['comment' => 'ID'])]
-    private ?string $id = null;
-
+    use SnowflakeKeyAware;
     use BlameableAware;
 
     #[IndexColumn]
@@ -54,7 +49,7 @@ class Task implements \Stringable
 
     #[Ignore]
     #[ORM\OneToMany(mappedBy: 'task', targetEntity: Node::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[ORM\OrderBy(['sequence' => 'ASC'])]
+    #[ORM\OrderBy(value: ['sequence' => 'ASC'])]
     private Collection $nodes;
 
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['comment' => '流程数据'])]
@@ -72,10 +67,6 @@ class Task implements \Stringable
         return $this->title ?? '';
     }
 
-    public function getId(): ?string
-    {
-        return $this->id;
-    }
 
 
     public function isValid(): ?bool

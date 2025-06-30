@@ -7,14 +7,14 @@ use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\TaskStatus;
+use MarketingPlanBundle\Exception\TaskException;
 use Tourze\UserTagContracts\TagInterface;
 
 class TaskService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     /**
      * 创建任务
@@ -72,17 +72,17 @@ class TaskService
         }
 
         if (!$hasStart || !$hasEnd) {
-            throw new \RuntimeException('Task must have START and END nodes');
+            throw new TaskException('Task must have START and END nodes');
         }
 
         // 检查节点顺序是否连续
         $sequences = $task->getNodes()
-            ->map(fn (Node $node) => $node->getSequence())
+            ->map(fn(Node $node) => $node->getSequence())
             ->toArray();
         sort($sequences);
         $expected = range(1, count($sequences));
         if ($sequences !== $expected) {
-            throw new \RuntimeException('Node sequences must be continuous');
+            throw new TaskException('Node sequences must be continuous');
         }
 
         $task->setStatus(TaskStatus::RUNNING);
@@ -95,7 +95,7 @@ class TaskService
     public function pause(Task $task): void
     {
         if (TaskStatus::RUNNING !== $task->getStatus()) {
-            throw new \RuntimeException('Task is not running');
+            throw new TaskException('Task is not running');
         }
 
         $task->setStatus(TaskStatus::PAUSED);
@@ -108,7 +108,7 @@ class TaskService
     public function resume(Task $task): void
     {
         if (TaskStatus::PAUSED !== $task->getStatus()) {
-            throw new \RuntimeException('Task is not paused');
+            throw new TaskException('Task is not paused');
         }
 
         $task->setStatus(TaskStatus::RUNNING);
@@ -121,7 +121,7 @@ class TaskService
     public function finish(Task $task): void
     {
         if (TaskStatus::RUNNING !== $task->getStatus()) {
-            throw new \RuntimeException('Task is not running');
+            throw new TaskException('Task is not running');
         }
 
         $task->setStatus(TaskStatus::FINISHED);

@@ -3,6 +3,7 @@
 namespace MarketingPlanBundle\Command;
 
 use MarketingPlanBundle\Enum\DelayType;
+use MarketingPlanBundle\Exception\TaskException;
 use MarketingPlanBundle\Repository\NodeRepository;
 use MarketingPlanBundle\Service\UserProgressService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -40,7 +41,7 @@ class CheckNodeTimeoutCommand extends Command
             if (DelayType::SPECIFIC_TIME === $delay->getType()) {
                 $specificTime = $delay->getSpecificTime();
                 if (null === $specificTime) {
-                    throw new \RuntimeException('Specific time is required for SPECIFIC_TIME delay type');
+                    throw new TaskException('Specific time is required for SPECIFIC_TIME delay type');
                 }
                 $beforeTime = $specificTime;
             } else {
