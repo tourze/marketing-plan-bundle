@@ -2,8 +2,6 @@
 
 namespace MarketingPlanBundle\Tests\Service;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\ORM\EntityManagerInterface;
 use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\NodeStage;
 use MarketingPlanBundle\Entity\Task;
@@ -12,627 +10,621 @@ use MarketingPlanBundle\Enum\DropReason;
 use MarketingPlanBundle\Enum\NodeStageStatus;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\ProgressStatus;
-use MarketingPlanBundle\Repository\NodeStageRepository;
-use MarketingPlanBundle\Repository\UserProgressRepository;
+use MarketingPlanBundle\Enum\TaskStatus;
+use MarketingPlanBundle\Exception\UserProgressException;
 use MarketingPlanBundle\Service\UserProgressService;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
+use Tourze\ResourceManageBundle\Entity\ResourceConfig;
+use UserTagBundle\Entity\Tag;
 
-class UserProgressServiceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(UserProgressService::class)]
+#[RunTestsInSeparateProcesses]
+final class UserProgressServiceTest extends AbstractIntegrationTestCase
 {
-    private EntityManagerInterface $entityManager;
-    private UserProgressRepository $userProgressRepository;
-    private NodeStageRepository $nodeStageRepository;
     private UserProgressService $userProgressService;
 
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->userProgressRepository = $this->createMock(UserProgressRepository::class);
-        $this->nodeStageRepository = $this->createMock(NodeStageRepository::class);
-        $this->userProgressService = new UserProgressService(
-            $this->entityManager,
-            $this->userProgressRepository,
-            $this->nodeStageRepository
-        );
+        $service = self::getContainer()->get(UserProgressService::class);
+        $this->assertInstanceOf(UserProgressService::class, $service);
+        $this->userProgressService = $service;
     }
 
-    public function testCreate_whenProgressDoesNotExist_createsNewProgress(): void
+    public function testUserProgressServiceCanBeInstantiated(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $userId = 'user123';
-        $firstNode = $this->createMock(Node::class);
-        
-        // 创建一个正确的模拟ArrayCollection
-        $nodes = $this->getMockBuilder(ArrayCollection::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['first'])
-            ->getMock();
-        
-        $nodes->method('first')->willReturn($firstNode);
-        
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $this->userProgressRepository->method('findOneBy')
-            ->with([
-                'task' => $task,
-                'userId' => $userId,
-            ])
-            ->willReturn(null);
-            
-        $this->entityManager->expects($this->exactly(2))
-            ->method('persist');
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
-        $result = $this->userProgressService->create($task, $userId);
-
-        // Assert
-        $this->assertInstanceOf(UserProgress::class, $result);
-        $this->assertSame($task, $result->getTask());
-        $this->assertSame($userId, $result->getUserId());
-        $this->assertSame($firstNode, $result->getCurrentNode());
-        $this->assertEquals(ProgressStatus::RUNNING, $result->getStatus());
-        $this->assertNotNull($result->getStartTime());
+        $this->assertInstanceOf(UserProgressService::class, $this->userProgressService);
     }
 
-    public function testCreate_whenProgressExists_returnsExistingProgress(): void
+    public function testCreateCreatesNewUserProgressWithFirstNode(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
+        $task = $this->createTaskWithNodes();
         $userId = 'user123';
-        $existingProgress = $this->createMock(UserProgress::class);
-        
-        $this->userProgressRepository->method('findOneBy')
-            ->with([
-                'task' => $task,
-                'userId' => $userId,
-            ])
-            ->willReturn($existingProgress);
-            
-        $this->entityManager->expects($this->never())
-            ->method('persist');
-            
-        $this->entityManager->expects($this->never())
-            ->method('flush');
 
-        // Act
-        $result = $this->userProgressService->create($task, $userId);
+        $progress = $this->userProgressService->create($task, $userId);
 
-        // Assert
-        $this->assertSame($existingProgress, $result);
+        $this->assertInstanceOf(UserProgress::class, $progress);
+        $this->assertSame($task, $progress->getTask());
+        $this->assertSame($userId, $progress->getUserId());
+        $this->assertSame(ProgressStatus::RUNNING, $progress->getStatus());
+        $this->assertNotNull($progress->getStartTime());
+        $this->assertNotNull($progress->getId());
+
+        // Check that current node is the first node
+        $firstNode = $task->getNodes()->first();
+        $this->assertInstanceOf(Node::class, $firstNode);
+        $this->assertInstanceOf(Node::class, $firstNode);
+        $this->assertSame($firstNode, $progress->getCurrentNode());
+
+        // Check that first node stage is created
+        $stages = $progress->getStages();
+        $this->assertCount(1, $stages);
+
+        $firstStage = $stages->first();
+        $this->assertInstanceOf(NodeStage::class, $firstStage);
+        $this->assertSame($firstNode, $firstStage->getNode());
+        $this->assertSame(NodeStageStatus::RUNNING, $firstStage->getStatus());
+        $this->assertNotNull($firstStage->getReachTime());
     }
 
-    public function testCreate_whenTaskHasNoNodes_throwsException(): void
+    public function testCreateReturnsExistingProgressIfAlreadyExists(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
+        $task = $this->createTaskWithNodes();
         $userId = 'user123';
-        
-        // 创建一个正确的模拟ArrayCollection
-        $nodes = $this->getMockBuilder(ArrayCollection::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['first'])
-            ->getMock();
-        
-        $nodes->method('first')->willReturn(false);
-        
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $this->userProgressRepository->method('findOneBy')
-            ->willReturn(null);
 
-        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
+        // Create first progress
+        $progress1 = $this->userProgressService->create($task, $userId);
+        $progress1Id = $progress1->getId();
+
+        // Try to create again - should return existing
+        $progress2 = $this->userProgressService->create($task, $userId);
+
+        $this->assertSame($progress1Id, $progress2->getId());
+        $this->assertSame($progress1, $progress2);
+    }
+
+    public function testCreateThrowsExceptionWhenTaskHasNoNodes(): void
+    {
+        $task = $this->createTaskWithoutNodes();
+        $userId = 'user123';
+
+        $this->expectException(UserProgressException::class);
         $this->expectExceptionMessage('Task has no nodes');
 
-        // Act
         $this->userProgressService->create($task, $userId);
     }
 
-    public function testMarkTouched_whenStageExists_updatesTouchTime(): void
+    public function testMarkTouchedSetsNodeStageAsTouched(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isTouched')
-            ->willReturn(false);
-            
-        $stage->expects($this->once())
-            ->method('setTouchTime')
-            ->with($this->isInstanceOf(\DateTimeImmutable::class));
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        // Act
         $this->userProgressService->markTouched($progress, $node);
-        
-        // 测试通过
-        $this->assertTrue(true);
+
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $this->assertTrue($stage->isTouched());
+        $this->assertNotNull($stage->getTouchTime());
     }
 
-    public function testMarkTouched_whenStageNotFound_throwsException(): void
+    public function testMarkTouchedDoesNothingIfAlreadyTouched(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn(null);
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
+        // Mark as touched first time
+        $this->userProgressService->markTouched($progress, $node);
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $firstTouchTime = $stage->getTouchTime();
+
+        // Mark as touched second time
+        $this->userProgressService->markTouched($progress, $node);
+
+        // Touch time should remain the same
+        $this->assertNotNull($stage);
+        $this->assertEquals($firstTouchTime, $stage->getTouchTime());
+    }
+
+    public function testMarkTouchedThrowsExceptionWhenStageNotFound(): void
+    {
+        $progress = $this->createUserProgressWithStage();
+        $otherNode = $this->createNode($progress->getTask(), 'Other Node', NodeType::RESOURCE, 99);
+
+        $this->expectException(UserProgressException::class);
         $this->expectExceptionMessage('Node stage not found');
 
-        // Act
-        $this->userProgressService->markTouched($progress, $node);
+        $this->userProgressService->markTouched($progress, $otherNode);
     }
 
-    public function testMarkTouched_whenAlreadyTouched_doesNothing(): void
+    public function testMarkActivatedSetsNodeStageAsActivated(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isTouched')
-            ->willReturn(true);
-            
-        $stage->expects($this->never())
-            ->method('setTouchTime');
-            
-        $this->entityManager->expects($this->never())
-            ->method('flush');
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        // Act
-        $this->userProgressService->markTouched($progress, $node);
-        
-        // 测试通过
-        $this->assertTrue(true);
-    }
-
-    public function testMarkActivated_whenStageExistsAndNodeIsEnd_updatesActiveTimeAndFinishesProgress(): void
-    {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isActivated')
-            ->willReturn(false);
-            
-        $node->method('getType')
-            ->willReturn(NodeType::END);
-            
-        $stage->expects($this->once())
-            ->method('setActiveTime')
-            ->with($this->isInstanceOf(\DateTimeImmutable::class));
-            
-        $progress->expects($this->once())
-            ->method('setStatus')
-            ->with(ProgressStatus::FINISHED)
-            ->willReturnSelf();
-            
-        $progress->expects($this->once())
-            ->method('setFinishTime')
-            ->with($this->isInstanceOf(\DateTimeImmutable::class))
-            ->willReturnSelf();
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
         $this->userProgressService->markActivated($progress, $node);
-        
-        // 测试通过
-        $this->assertTrue(true);
+
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $this->assertTrue($stage->isActivated());
+        $this->assertNotNull($stage->getActiveTime());
     }
 
-    public function testMarkActivated_whenStageExistsAndNodeIsNotEnd_updatesActiveTimeOnly(): void
+    public function testMarkActivatedDoesNothingIfAlreadyActivated(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isActivated')
-            ->willReturn(false);
-            
-        $node->method('getType')
-            ->willReturn(NodeType::RESOURCE); // 使用正确的枚举值
-            
-        $stage->expects($this->once())
-            ->method('setActiveTime')
-            ->with($this->isInstanceOf(\DateTimeImmutable::class));
-            
-        $progress->expects($this->never())
-            ->method('setStatus');
-            
-        $progress->expects($this->never())
-            ->method('setFinishTime');
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        // Act
+        // Mark as activated first time
         $this->userProgressService->markActivated($progress, $node);
-        
-        // 测试通过
-        $this->assertTrue(true);
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $firstActiveTime = $stage->getActiveTime();
+
+        // Mark as activated second time
+        $this->userProgressService->markActivated($progress, $node);
+
+        // Active time should remain the same
+        $this->assertNotNull($stage);
+        $this->assertEquals($firstActiveTime, $stage->getActiveTime());
     }
 
-    public function testMarkActivated_whenStageNotFound_throwsException(): void
+    public function testMarkActivatedFinishesProgressWhenEndNode(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn(null);
+        $task = $this->createTaskWithNodes();
+        $progress = $this->createUserProgress($task, 'user123');
 
-        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
+        // Get the end node
+        $endNode = $task->getNodes()->last();
+        $this->assertInstanceOf(Node::class, $endNode);
+
+        // Create stage for end node
+        $endStage = new NodeStage();
+        $endStage->setNode($endNode);
+        $endStage->setUserProgress($progress);
+        $endStage->setStatus(NodeStageStatus::RUNNING);
+        $endStage->setReachTime(new \DateTimeImmutable());
+        $progress->addStage($endStage);
+        self::getEntityManager()->persist($endStage);
+        self::getEntityManager()->flush();
+
+        $this->userProgressService->markActivated($progress, $endNode);
+
+        $this->assertSame(ProgressStatus::FINISHED, $progress->getStatus());
+        $this->assertNotNull($progress->getFinishTime());
+    }
+
+    public function testMarkActivatedThrowsExceptionWhenStageNotFound(): void
+    {
+        $progress = $this->createUserProgressWithStage();
+        $otherNode = $this->createNode($progress->getTask(), 'Other Node', NodeType::RESOURCE, 99);
+
+        $this->expectException(UserProgressException::class);
         $this->expectExceptionMessage('Node stage not found');
 
-        // Act
-        $this->userProgressService->markActivated($progress, $node);
+        $this->userProgressService->markActivated($progress, $otherNode);
     }
 
-    public function testMarkActivated_whenAlreadyActivated_doesNothing(): void
+    public function testMarkDroppedSetsNodeStageAsDropped(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isActivated')
-            ->willReturn(true);
-            
-        $stage->expects($this->never())
-            ->method('setActiveTime');
-            
-        $this->entityManager->expects($this->never())
-            ->method('flush');
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        // Act
-        $this->userProgressService->markActivated($progress, $node);
-        
-        // 测试通过
-        $this->assertTrue(true);
+        $this->userProgressService->markDropped($progress, $node, DropReason::TIMEOUT);
+
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $this->assertTrue($stage->isDropped());
+        $this->assertNotNull($stage->getDropTime());
+        $this->assertSame(DropReason::TIMEOUT, $stage->getDropReason());
+        $this->assertSame(NodeStageStatus::DROPPED, $stage->getStatus());
+        $this->assertSame(ProgressStatus::DROPPED, $progress->getStatus());
     }
 
-    public function testMarkDropped_whenStageExists_updatesDropDetails(): void
+    public function testMarkDroppedDoesNothingIfAlreadyDropped(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        $reason = DropReason::TIMEOUT;
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isDropped')
-            ->willReturn(false);
-            
-        $stage->expects($this->once())
-            ->method('setDropTime')
-            ->with($this->isInstanceOf(\DateTimeImmutable::class))
-            ->willReturnSelf();
-            
-        $stage->expects($this->once())
-            ->method('setDropReason')
-            ->with($reason)
-            ->willReturnSelf();
-            
-        $stage->expects($this->once())
-            ->method('setStatus')
-            ->with(NodeStageStatus::DROPPED)
-            ->willReturnSelf();
-            
-        $progress->expects($this->once())
-            ->method('setStatus')
-            ->with(ProgressStatus::DROPPED);
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        // Act
-        $this->userProgressService->markDropped($progress, $node, $reason);
-        
-        // 测试通过
-        $this->assertTrue(true);
+        // Mark as dropped first time
+        $this->userProgressService->markDropped($progress, $node, DropReason::TIMEOUT);
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $firstDropTime = $stage->getDropTime();
+
+        // Mark as dropped second time
+        $this->userProgressService->markDropped($progress, $node, DropReason::CONDITION_NOT_MET);
+
+        // Drop time and reason should remain the same
+        $this->assertNotNull($stage);
+        $this->assertEquals($firstDropTime, $stage->getDropTime());
+        $this->assertSame(DropReason::TIMEOUT, $stage->getDropReason());
     }
 
-    public function testMarkDropped_whenStageNotFound_throwsException(): void
+    public function testMarkDroppedThrowsExceptionWhenStageNotFound(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $reason = DropReason::TIMEOUT;
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn(null);
+        $progress = $this->createUserProgressWithStage();
+        $otherNode = $this->createNode($progress->getTask(), 'Other Node', NodeType::RESOURCE, 99);
 
-        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
+        $this->expectException(UserProgressException::class);
         $this->expectExceptionMessage('Node stage not found');
 
-        // Act
-        $this->userProgressService->markDropped($progress, $node, $reason);
+        $this->userProgressService->markDropped($progress, $otherNode, DropReason::TIMEOUT);
     }
 
-    public function testMarkDropped_whenAlreadyDropped_doesNothing(): void
+    public function testMoveToNextNodeCreatesNewStageForNextNode(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        $reason = DropReason::TIMEOUT;
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isDropped')
-            ->willReturn(true);
-            
-        $stage->expects($this->never())
-            ->method('setDropTime');
-            
-        $this->entityManager->expects($this->never())
-            ->method('flush');
+        $task = $this->createTaskWithMultipleNodes();
+        $progress = $this->createUserProgress($task, 'user123');
 
-        // Act
-        $this->userProgressService->markDropped($progress, $node, $reason);
-        
-        // 测试通过
-        $this->assertTrue(true);
-    }
+        $firstNode = $task->getNodes()->first();
+        $this->assertInstanceOf(Node::class, $firstNode);
+        $secondNode = $task->getNodes()->toArray()[1];
+        $this->assertInstanceOf(Node::class, $secondNode);
 
-    public function testMoveToNextNode_whenCurrentNodeActivated_movesToNextNode(): void
-    {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $currentNode = $this->createMock(Node::class);
-        $currentStage = $this->createMock(NodeStage::class);
-        $nextNode = $this->createMock(Node::class);
-        $task = $this->createMock(Task::class);
-        
-        $progress->method('getCurrentNode')
-            ->willReturn($currentNode);
-            
-        $progress->method('getNodeStage')
-            ->with($currentNode)
-            ->willReturn($currentStage);
-            
-        $currentStage->method('isActivated')
-            ->willReturn(true);
-            
-        $currentNode->method('getTask')
-            ->willReturn($task);
-            
-        $currentNode->method('getSequence')
-            ->willReturn(1);
-            
-        $nextNode->method('getSequence')
-            ->willReturn(2);
-            
-        // 创建一个包含nextNode的集合
-        $filteredNodes = $this->getMockBuilder(ArrayCollection::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['first'])
-            ->getMock();
-            
-        $filteredNodes->method('first')
-            ->willReturn($nextNode);
-            
-        // 创建一个可以被过滤的节点集合
-        $nodes = $this->getMockBuilder(ArrayCollection::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['filter'])
-            ->getMock();
-            
-        $nodes->method('filter')
-            ->willReturn($filteredNodes);
-            
-        $task->method('getNodes')
-            ->willReturn($nodes);
-            
-        $progress->expects($this->once())
-            ->method('addStage')
-            ->with($this->isInstanceOf(NodeStage::class))
-            ->willReturnSelf();
-            
-        $progress->expects($this->once())
-            ->method('setCurrentNode')
-            ->with($nextNode)
-            ->willReturnSelf();
-            
-        $this->entityManager->expects($this->once())
-            ->method('persist')
-            ->with($this->isInstanceOf(NodeStage::class));
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        // Create and activate first stage
+        $firstStage = new NodeStage();
+        $firstStage->setNode($firstNode);
+        $firstStage->setUserProgress($progress);
+        $firstStage->setStatus(NodeStageStatus::RUNNING);
+        $firstStage->setReachTime(new \DateTimeImmutable());
+        $firstStage->setActiveTime(new \DateTimeImmutable());
+        $progress->addStage($firstStage);
+        $progress->setCurrentNode($firstNode);
+        self::getEntityManager()->persist($firstStage);
+        self::getEntityManager()->flush();
 
-        // Act
         $this->userProgressService->moveToNextNode($progress);
-        
-        // 测试通过
-        $this->assertTrue(true);
+
+        // Check that current node is updated
+        $this->assertSame($secondNode, $progress->getCurrentNode());
+
+        // Check that new stage is created
+        $secondStage = $progress->getNodeStage($secondNode);
+        $this->assertNotNull($secondStage);
+        $this->assertSame(NodeStageStatus::RUNNING, $secondStage->getStatus());
+        $this->assertNotNull($secondStage->getReachTime());
     }
 
-    public function testMoveToNextNode_whenCurrentNodeNotActivated_throwsException(): void
+    public function testMoveToNextNodeThrowsExceptionWhenCurrentNodeNotActivated(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $currentNode = $this->createMock(Node::class);
-        $currentStage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getCurrentNode')
-            ->willReturn($currentNode);
-            
-        $progress->method('getNodeStage')
-            ->with($currentNode)
-            ->willReturn($currentStage);
-            
-        $currentStage->method('isActivated')
-            ->willReturn(false);
+        $task = $this->createTaskWithMultipleNodes();
+        $progress = $this->createUserProgress($task, 'user123');
 
-        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
+        $firstNode = $task->getNodes()->first();
+        $this->assertInstanceOf(Node::class, $firstNode);
+
+        // Create stage but don't activate it
+        $firstStage = new NodeStage();
+        $firstStage->setNode($firstNode);
+        $firstStage->setUserProgress($progress);
+        $firstStage->setStatus(NodeStageStatus::RUNNING);
+        $firstStage->setReachTime(new \DateTimeImmutable());
+        $progress->addStage($firstStage);
+        $progress->setCurrentNode($firstNode);
+        self::getEntityManager()->persist($firstStage);
+        self::getEntityManager()->flush();
+
+        $this->expectException(UserProgressException::class);
         $this->expectExceptionMessage('Current node not activated');
 
-        // Act
         $this->userProgressService->moveToNextNode($progress);
     }
 
-    public function testMoveToNextNode_whenNoNextNode_throwsException(): void
+    public function testMoveToNextNodeThrowsExceptionWhenNoNextNode(): void
     {
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $currentNode = $this->createMock(Node::class);
-        $currentStage = $this->createMock(NodeStage::class);
-        $task = $this->createMock(Task::class);
-        
-        $progress->method('getCurrentNode')
-            ->willReturn($currentNode);
-            
-        $progress->method('getNodeStage')
-            ->with($currentNode)
-            ->willReturn($currentStage);
-            
-        $currentStage->method('isActivated')
-            ->willReturn(true);
-            
-        $currentNode->method('getTask')
-            ->willReturn($task);
-            
-        $currentNode->method('getSequence')
-            ->willReturn(3);
-            
-        // 创建一个为空的过滤结果
-        $filteredNodes = $this->getMockBuilder(ArrayCollection::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['first'])
-            ->getMock();
-            
-        $filteredNodes->method('first')
-            ->willReturn(false);
-            
-        // 创建一个可以被过滤的节点集合
-        $nodes = $this->getMockBuilder(ArrayCollection::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods(['filter'])
-            ->getMock();
-            
-        $nodes->method('filter')
-            ->willReturn($filteredNodes);
-            
-        $task->method('getNodes')
-            ->willReturn($nodes);
+        $task = $this->createTaskWithNodes();
+        $progress = $this->createUserProgress($task, 'user123');
 
-        $this->expectException(\MarketingPlanBundle\Exception\UserProgressException::class);
+        $lastNode = $task->getNodes()->last();
+        $this->assertInstanceOf(Node::class, $lastNode);
+
+        // Create and activate stage for last node
+        $lastStage = new NodeStage();
+        $lastStage->setNode($lastNode);
+        $lastStage->setUserProgress($progress);
+        $lastStage->setStatus(NodeStageStatus::RUNNING);
+        $lastStage->setReachTime(new \DateTimeImmutable());
+        $lastStage->setActiveTime(new \DateTimeImmutable());
+        $progress->addStage($lastStage);
+        $progress->setCurrentNode($lastNode);
+        self::getEntityManager()->persist($lastStage);
+        self::getEntityManager()->flush();
+
+        $this->expectException(UserProgressException::class);
         $this->expectExceptionMessage('No next node found');
 
-        // Act
         $this->userProgressService->moveToNextNode($progress);
     }
 
-    public function testCheckTimeoutDropped_marksEachStageAsDroppedWithTimeout(): void
+    public function testCheckTimeoutDroppedMarksStagesAsDropped(): void
     {
-        // Arrange
-        $node = $this->createMock(Node::class);
-        $beforeTime = new \DateTime();
-        
-        $stage1 = $this->createMock(NodeStage::class);
-        $stage2 = $this->createMock(NodeStage::class);
-        
-        $progress1 = $this->createMock(UserProgress::class);
-        $progress2 = $this->createMock(UserProgress::class);
-        
-        $stage1->method('getUserProgress')->willReturn($progress1);
-        $stage2->method('getUserProgress')->willReturn($progress2);
-        
-        $this->nodeStageRepository->method('findShouldDropped')
-            ->with($node, $beforeTime)
-            ->willReturn([$stage1, $stage2]);
-            
-        // 设置markDropped调用需要的行为
-        $progress1->method('getNodeStage')->with($node)->willReturn($stage1);
-        $progress2->method('getNodeStage')->with($node)->willReturn($stage2);
-        
-        $stage1->method('isDropped')->willReturn(false);
-        $stage2->method('isDropped')->willReturn(false);
-        
-        $stage1->expects($this->once())->method('setDropTime')->willReturnSelf();
-        $stage1->expects($this->once())->method('setDropReason')->with(DropReason::TIMEOUT)->willReturnSelf();
-        $stage1->expects($this->once())->method('setStatus')->with(NodeStageStatus::DROPPED)->willReturnSelf();
-        
-        $stage2->expects($this->once())->method('setDropTime')->willReturnSelf();
-        $stage2->expects($this->once())->method('setDropReason')->with(DropReason::TIMEOUT)->willReturnSelf();
-        $stage2->expects($this->once())->method('setStatus')->with(NodeStageStatus::DROPPED)->willReturnSelf();
-        
-        $progress1->expects($this->once())->method('setStatus')->with(ProgressStatus::DROPPED);
-        $progress2->expects($this->once())->method('setStatus')->with(ProgressStatus::DROPPED);
-        
-        $this->entityManager->expects($this->exactly(2))->method('flush');
+        $task = $this->createTaskWithNodes();
+        $node = $task->getNodes()->first();
+        $this->assertInstanceOf(Node::class, $node);
 
-        // Act
+        // Create progress and stage that should be dropped (old reach time)
+        $progress = $this->createUserProgress($task, 'user123');
+        $stage = new NodeStage();
+        $stage->setNode($node);
+        $stage->setUserProgress($progress);
+        $stage->setStatus(NodeStageStatus::RUNNING);
+        $stage->setReachTime(new \DateTimeImmutable('-2 hours'));
+        $stage->setTouchTime(new \DateTimeImmutable('-2 hours'));  // 设置触达时间以满足查询条件
+        $progress->addStage($stage);
+        self::getEntityManager()->persist($stage);
+        self::getEntityManager()->flush();
+
+        $beforeTime = new \DateTimeImmutable('-1 hour');
         $this->userProgressService->checkTimeoutDropped($node, $beforeTime);
-        
-        // 测试通过
-        $this->assertTrue(true);
+
+        self::getEntityManager()->refresh($progress);
+        $this->assertSame(ProgressStatus::DROPPED, $progress->getStatus());
+
+        self::getEntityManager()->refresh($stage);
+        $this->assertTrue($stage->isDropped());
+        $this->assertSame(DropReason::TIMEOUT, $stage->getDropReason());
     }
 
-    public function testCheckConditionDropped_whenConditionsNotMetAndEligible_marksAsDropped(): void
+    public function testCheckConditionDroppedDoesNothingWithCurrentImplementation(): void
     {
-        // 由于方法中存在TODO标记，这个测试只能验证方法的基本行为
-        
-        // Arrange
-        $progress = $this->createMock(UserProgress::class);
-        $node = $this->createMock(Node::class);
-        $stage = $this->createMock(NodeStage::class);
-        
-        $progress->method('getNodeStage')
-            ->with($node)
-            ->willReturn($stage);
-            
-        $stage->method('isTouched')->willReturn(true);
-        $stage->method('isActivated')->willReturn(false);
-        $stage->method('isDropped')->willReturn(false);
-        
-        // 目前方法中硬编码了$conditionsMet = true，所以不会调用markDropped
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
 
-        // Act
+        // Set stage as touched but not activated
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $stage->setTouchTime(new \DateTimeImmutable());
+        self::getEntityManager()->flush();
+
         $this->userProgressService->checkConditionDropped($progress, $node);
-        
-        // 由于当前实现不会触发标记为dropped，我们只能验证测试已执行
-        $this->assertTrue(true);
+
+        // Since condition checking is not implemented, nothing should change
+        $this->assertSame(ProgressStatus::RUNNING, $progress->getStatus());
+        $this->assertFalse($stage->isDropped());
     }
-} 
+
+    public function testCheckConditionDroppedSkipsWhenStageNotTouched(): void
+    {
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
+
+        $this->userProgressService->checkConditionDropped($progress, $node);
+
+        // Nothing should change
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $this->assertSame(ProgressStatus::RUNNING, $progress->getStatus());
+        $this->assertFalse($stage->isDropped());
+    }
+
+    public function testCheckConditionDroppedSkipsWhenStageAlreadyActivated(): void
+    {
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
+
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $stage->setTouchTime(new \DateTimeImmutable());
+        $stage->setActiveTime(new \DateTimeImmutable());
+        self::getEntityManager()->flush();
+
+        $this->userProgressService->checkConditionDropped($progress, $node);
+
+        // Nothing should change
+        $this->assertSame(ProgressStatus::RUNNING, $progress->getStatus());
+        $this->assertFalse($stage->isDropped());
+    }
+
+    public function testCheckConditionDroppedSkipsWhenStageAlreadyDropped(): void
+    {
+        $progress = $this->createUserProgressWithStage();
+        $node = $progress->getCurrentNode();
+
+        $stage = $progress->getNodeStage($node);
+        $this->assertNotNull($stage);
+        $stage->setTouchTime(new \DateTimeImmutable());
+        $stage->setDropTime(new \DateTimeImmutable());
+        $stage->setDropReason(DropReason::TIMEOUT);
+        $stage->setStatus(NodeStageStatus::DROPPED);
+        self::getEntityManager()->flush();
+
+        $this->userProgressService->checkConditionDropped($progress, $node);
+
+        // Nothing should change
+        $this->assertSame(ProgressStatus::RUNNING, $progress->getStatus());
+        $this->assertSame(DropReason::TIMEOUT, $stage->getDropReason());
+    }
+
+    private function createTaskWithNodes(): Task
+    {
+        $crowd = new Tag();
+        $crowd->setName('Test Crowd');
+        self::getEntityManager()->persist($crowd);
+
+        $task = new Task();
+        $task->setTitle('Test Task');
+        $task->setDescription('Test Description');
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setCrowd($crowd);
+        $task->setStartTime(new \DateTimeImmutable());
+        $task->setEndTime(new \DateTimeImmutable('+1 day'));
+
+        self::getEntityManager()->persist($task);
+
+        // Create start and end nodes
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
+
+        $startNode = new Node();
+        $startNode->setName('Start');
+        $startNode->setType(NodeType::START);
+        $startNode->setSequence(1);
+        $startNode->setTask($task);
+        $startNode->setResource($resourceConfig);
+
+        $endResourceConfig = new ResourceConfig();
+        $endResourceConfig->setType('none');
+        $endResourceConfig->setAmount(0);
+
+        $endNode = new Node();
+        $endNode->setName('End');
+        $endNode->setType(NodeType::END);
+        $endNode->setSequence(2);
+        $endNode->setTask($task);
+        $endNode->setResource($endResourceConfig);
+
+        $task->addNode($startNode);
+        $task->addNode($endNode);
+
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        return $task;
+    }
+
+    private function createTaskWithMultipleNodes(): Task
+    {
+        $crowd = new Tag();
+        $crowd->setName('Multi Node Crowd');
+        self::getEntityManager()->persist($crowd);
+
+        $task = new Task();
+        $task->setTitle('Multi Node Task');
+        $task->setDescription('Task with multiple nodes');
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setCrowd($crowd);
+        $task->setStartTime(new \DateTimeImmutable());
+        $task->setEndTime(new \DateTimeImmutable('+1 day'));
+
+        self::getEntityManager()->persist($task);
+
+        // Create multiple nodes
+        $startResourceConfig = new ResourceConfig();
+        $startResourceConfig->setType('none');
+        $startResourceConfig->setAmount(0);
+
+        $startNode = new Node();
+        $startNode->setName('Start');
+        $startNode->setType(NodeType::START);
+        $startNode->setSequence(1);
+        $startNode->setTask($task);
+        $startNode->setResource($startResourceConfig);
+
+        $middleResourceConfig = new ResourceConfig();
+        $middleResourceConfig->setType('none');
+        $middleResourceConfig->setAmount(0);
+
+        $middleNode = new Node();
+        $middleNode->setName('Middle');
+        $middleNode->setType(NodeType::RESOURCE);
+        $middleNode->setSequence(2);
+        $middleNode->setTask($task);
+        $middleNode->setResource($middleResourceConfig);
+
+        $endResourceConfig = new ResourceConfig();
+        $endResourceConfig->setType('none');
+        $endResourceConfig->setAmount(0);
+
+        $endNode = new Node();
+        $endNode->setName('End');
+        $endNode->setType(NodeType::END);
+        $endNode->setSequence(3);
+        $endNode->setTask($task);
+        $endNode->setResource($endResourceConfig);
+
+        $task->addNode($startNode);
+        $task->addNode($middleNode);
+        $task->addNode($endNode);
+
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->persist($middleNode);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        return $task;
+    }
+
+    private function createTaskWithoutNodes(): Task
+    {
+        $crowd = new Tag();
+        $crowd->setName('Empty Task Crowd');
+        self::getEntityManager()->persist($crowd);
+
+        $task = new Task();
+        $task->setTitle('Empty Task');
+        $task->setDescription('Task without nodes');
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setCrowd($crowd);
+        $task->setStartTime(new \DateTimeImmutable());
+        $task->setEndTime(new \DateTimeImmutable('+1 day'));
+
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->flush();
+
+        return $task;
+    }
+
+    private function createUserProgress(Task $task, string $userId): UserProgress
+    {
+        $firstNode = $task->getNodes()->first();
+        $this->assertInstanceOf(Node::class, $firstNode);
+
+        $progress = new UserProgress();
+        $progress->setTask($task);
+        $progress->setUserId($userId);
+        $progress->setCurrentNode($firstNode);
+        $progress->setStatus(ProgressStatus::RUNNING);
+        $progress->setStartTime(new \DateTimeImmutable());
+
+        self::getEntityManager()->persist($progress);
+        self::getEntityManager()->flush();
+
+        return $progress;
+    }
+
+    private function createUserProgressWithStage(): UserProgress
+    {
+        $task = $this->createTaskWithNodes();
+        $progress = $this->createUserProgress($task, 'user123');
+
+        $firstNode = $task->getNodes()->first();
+        $this->assertInstanceOf(Node::class, $firstNode);
+        $stage = new NodeStage();
+        $stage->setNode($firstNode);
+        $stage->setUserProgress($progress);
+        $stage->setStatus(NodeStageStatus::RUNNING);
+        $stage->setReachTime(new \DateTimeImmutable());
+
+        $progress->addStage($stage);
+        self::getEntityManager()->persist($stage);
+        self::getEntityManager()->flush();
+
+        return $progress;
+    }
+
+    private function createNode(Task $task, string $name, NodeType $type, int $sequence): Node
+    {
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
+
+        $node = new Node();
+        $node->setName($name);
+        $node->setType($type);
+        $node->setSequence($sequence);
+        $node->setTask($task);
+        $node->setResource($resourceConfig);
+
+        self::getEntityManager()->persist($node);
+        self::getEntityManager()->flush();
+
+        return $node;
+    }
+}

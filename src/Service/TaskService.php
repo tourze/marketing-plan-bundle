@@ -8,13 +8,17 @@ use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\TaskStatus;
 use MarketingPlanBundle\Exception\TaskException;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use Tourze\ResourceManageBundle\Entity\ResourceConfig;
 use Tourze\UserTagContracts\TagInterface;
 
+#[Autoconfigure(public: true)]
 class TaskService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {}
+    ) {
+    }
 
     /**
      * 创建任务
@@ -24,25 +28,41 @@ class TaskService
     public function create(string $title, TagInterface $crowd, \DateTimeInterface $startTime, \DateTimeInterface $endTime): Task
     {
         $task = new Task();
-        $task->setTitle($title)
-            ->setCrowd($crowd)
-            ->setStartTime(\DateTimeImmutable::createFromInterface($startTime))
-            ->setEndTime(\DateTimeImmutable::createFromInterface($endTime))
-            ->setStatus(TaskStatus::DRAFT);
+        $task->setTitle($title);
+        $task->setCrowd($crowd);
+        $task->setStartTime(\DateTimeImmutable::createFromInterface($startTime));
+        $task->setEndTime(\DateTimeImmutable::createFromInterface($endTime));
+        $task->setStatus(TaskStatus::DRAFT);
+
+        // 创建开始节点资源配置
+        $startResourceConfig = new ResourceConfig();
+        $startResourceConfig->setType('none');
+        $startResourceConfig->setAmount(0);
 
         // 创建开始节点
         $startNode = new Node();
-        $startNode->setName('开始')
-            ->setType(NodeType::START)
-            ->setSequence(1)
-            ->setTask($task);
+        $startNode->setName('开始');
+        $startNode->setType(NodeType::START);
+        $startNode->setSequence(1);
+        $startNode->setTask($task);
+        $startNode->setResource($startResourceConfig);
+
+        // 创建结束节点资源配置
+        $endResourceConfig = new ResourceConfig();
+        $endResourceConfig->setType('none');
+        $endResourceConfig->setAmount(0);
 
         // 创建结束节点
         $endNode = new Node();
-        $endNode->setName('结束')
-            ->setType(NodeType::END)
-            ->setSequence(999)
-            ->setTask($task);
+        $endNode->setName('结束');
+        $endNode->setType(NodeType::END);
+        $endNode->setSequence(999);
+        $endNode->setTask($task);
+        $endNode->setResource($endResourceConfig);
+
+        // 将节点添加到任务
+        $task->addNode($startNode);
+        $task->addNode($endNode);
 
         $this->entityManager->persist($task);
         $this->entityManager->persist($startNode);
@@ -77,8 +97,9 @@ class TaskService
 
         // 检查节点顺序是否连续
         $sequences = $task->getNodes()
-            ->map(fn(Node $node) => $node->getSequence())
-            ->toArray();
+            ->map(fn (Node $node) => $node->getSequence())
+            ->toArray()
+        ;
         sort($sequences);
         $expected = range(1, count($sequences));
         if ($sequences !== $expected) {

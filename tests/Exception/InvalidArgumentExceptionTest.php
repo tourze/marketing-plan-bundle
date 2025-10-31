@@ -1,17 +1,22 @@
 <?php
 
-namespace MarketingPlanBundle\Tests\Unit\Exception;
+namespace MarketingPlanBundle\Tests\Exception;
 
 use MarketingPlanBundle\Exception\InvalidArgumentException;
 use MarketingPlanBundle\Exception\MarketingPlanException;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitBase\AbstractExceptionTestCase;
 
-class InvalidArgumentExceptionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(InvalidArgumentException::class)]
+final class InvalidArgumentExceptionTest extends AbstractExceptionTestCase
 {
     public function testExceptionCreation(): void
     {
         // Arrange
-        $message = '参数无效';
+        $message = '无效参数';
         $code = 1001;
         $previousException = new \Exception('前一个异常');
 
@@ -40,7 +45,7 @@ class InvalidArgumentExceptionTest extends TestCase
     public function testExceptionWithMessageOnly(): void
     {
         // Arrange
-        $message = '无效的参数值';
+        $message = '参数类型错误';
 
         // Act
         $exception = new InvalidArgumentException($message);
@@ -66,10 +71,10 @@ class InvalidArgumentExceptionTest extends TestCase
     {
         // Assert
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('测试异常抛出');
-        $this->expectExceptionCode(500);
+        $this->expectExceptionMessage('参数值超出范围');
+        $this->expectExceptionCode(400);
 
         // Act
-        throw new InvalidArgumentException('测试异常抛出', 500);
+        throw new InvalidArgumentException('参数值超出范围', 400);
     }
 }

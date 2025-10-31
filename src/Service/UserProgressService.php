@@ -11,17 +11,22 @@ use MarketingPlanBundle\Enum\DropReason;
 use MarketingPlanBundle\Enum\NodeStageStatus;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\ProgressStatus;
+use MarketingPlanBundle\Exception\InvalidArgumentException;
 use MarketingPlanBundle\Exception\UserProgressException;
 use MarketingPlanBundle\Repository\NodeStageRepository;
 use MarketingPlanBundle\Repository\UserProgressRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
+#[Autoconfigure(public: true)]
 class UserProgressService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UserProgressRepository $userProgressRepository,
         private readonly NodeStageRepository $nodeStageRepository,
-    ) {}
+    ) {
+    }
 
     /**
      * 创建用户进度
@@ -49,18 +54,18 @@ class UserProgressService
 
         // 创建进度
         $progress = new UserProgress();
-        $progress->setTask($task)
-            ->setUserId($userId)
-            ->setCurrentNode($firstNode)
-            ->setStatus(ProgressStatus::RUNNING)
-            ->setStartTime(new \DateTimeImmutable());
+        $progress->setTask($task);
+        $progress->setUserId($userId);
+        $progress->setCurrentNode($firstNode);
+        $progress->setStatus(ProgressStatus::RUNNING);
+        $progress->setStartTime(new \DateTimeImmutable());
 
         // 创建第一个节点的状态
         $stage = new NodeStage();
-        $stage->setNode($firstNode)
-            ->setUserProgress($progress)
-            ->setStatus(NodeStageStatus::RUNNING)
-            ->setReachTime(new \DateTimeImmutable());
+        $stage->setNode($firstNode);
+        $stage->setUserProgress($progress);
+        $stage->setStatus(NodeStageStatus::RUNNING);
+        $stage->setReachTime(new \DateTimeImmutable());
 
         $progress->addStage($stage);
 
@@ -112,8 +117,8 @@ class UserProgressService
 
         // 如果是最后一个节点，标记流程完成
         if (NodeType::END === $node->getType()) {
-            $progress->setStatus(ProgressStatus::FINISHED)
-                ->setFinishTime(new \DateTimeImmutable());
+            $progress->setStatus(ProgressStatus::FINISHED);
+            $progress->setFinishTime(new \DateTimeImmutable());
         }
 
         $this->entityManager->flush();
@@ -136,9 +141,9 @@ class UserProgressService
             return;
         }
 
-        $stage->setDropTime(new \DateTimeImmutable())
-            ->setDropReason($reason)
-            ->setStatus(NodeStageStatus::DROPPED);
+        $stage->setDropTime(new \DateTimeImmutable());
+        $stage->setDropReason($reason);
+        $stage->setStatus(NodeStageStatus::DROPPED);
 
         $progress->setStatus(ProgressStatus::DROPPED);
 
@@ -161,9 +166,14 @@ class UserProgressService
         }
 
         // 获取下一个节点
-        $nextNode = $currentNode->getTask()->getNodes()
-            ->filter(fn(Node $node) => $node->getSequence() > $currentNode->getSequence())
-            ->first();
+        $task = $currentNode->getTask();
+        if (null === $task) {
+            throw new InvalidArgumentException('Node must be associated with a task');
+        }
+        $nextNode = $task->getNodes()
+            ->filter(fn (Node $node) => $node->getSequence() > $currentNode->getSequence())
+            ->first()
+        ;
 
         if (false === $nextNode) {
             throw new UserProgressException('No next node found');
@@ -171,13 +181,13 @@ class UserProgressService
 
         // 创建新节点的状态
         $stage = new NodeStage();
-        $stage->setNode($nextNode)
-            ->setUserProgress($progress)
-            ->setStatus(NodeStageStatus::RUNNING)
-            ->setReachTime(new \DateTimeImmutable());
+        $stage->setNode($nextNode);
+        $stage->setUserProgress($progress);
+        $stage->setStatus(NodeStageStatus::RUNNING);
+        $stage->setReachTime(new \DateTimeImmutable());
 
-        $progress->addStage($stage)
-            ->setCurrentNode($nextNode);
+        $progress->addStage($stage);
+        $progress->setCurrentNode($nextNode);
 
         $this->entityManager->persist($stage);
         $this->entityManager->flush();

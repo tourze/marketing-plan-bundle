@@ -16,6 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class CheckTaskStatusCommand extends Command
 {
     public const NAME = 'marketing-plan:check-task-status';
+
     public function __construct(
         private readonly TaskRepository $taskRepository,
         private readonly TaskService $taskService,

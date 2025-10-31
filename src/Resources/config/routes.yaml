@@ -1,3 +1,0 @@
-marketing_plan_controllers:
-  resource: '../../Controller/'
-  type: attribute

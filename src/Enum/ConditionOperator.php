@@ -14,6 +14,7 @@ enum ConditionOperator: string implements Labelable, Itemable, Selectable
     use SelectTrait;
 
     case EQUAL = 'eq';
+    case EQUALS = 'equals';
     case NOT_EQUAL = 'neq';
     case GREATER_THAN = 'gt';
     case GREATER_THAN_OR_EQUAL = 'gte';
@@ -28,6 +29,7 @@ enum ConditionOperator: string implements Labelable, Itemable, Selectable
     {
         return match ($this) {
             self::EQUAL => '等于',
+            self::EQUALS => '等于（旧版）',
             self::NOT_EQUAL => '不等于',
             self::GREATER_THAN => '大于',
             self::GREATER_THAN_OR_EQUAL => '大于等于',

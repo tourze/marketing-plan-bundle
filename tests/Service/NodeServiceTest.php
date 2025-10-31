@@ -2,376 +2,420 @@
 
 namespace MarketingPlanBundle\Tests\Service;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\ORM\EntityManagerInterface;
 use MarketingPlanBundle\Entity\Node;
-use MarketingPlanBundle\Entity\NodeCondition;
-use MarketingPlanBundle\Entity\NodeDelay;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\ConditionOperator;
-use MarketingPlanBundle\Enum\DelayType;
 use MarketingPlanBundle\Enum\NodeType;
+use MarketingPlanBundle\Enum\TaskStatus;
+use MarketingPlanBundle\Exception\InvalidArgumentException;
+use MarketingPlanBundle\Exception\NodeException;
 use MarketingPlanBundle\Service\NodeService;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use Tourze\CatalogBundle\Entity\Catalog;
+use Tourze\CatalogBundle\Entity\CatalogType;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
+use Tourze\ResourceManageBundle\Entity\ResourceConfig;
+use UserTagBundle\Entity\Tag;
+use UserTagBundle\Enum\TagType;
 
-
-
-class NodeServiceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(NodeService::class)]
+#[RunTestsInSeparateProcesses]
+final class NodeServiceTest extends AbstractIntegrationTestCase
 {
-    private EntityManagerInterface $entityManager;
     private NodeService $nodeService;
 
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->nodeService = new NodeService($this->entityManager);
+        $service = self::getContainer()->get(NodeService::class);
+        $this->assertInstanceOf(NodeService::class, $service);
+        $this->nodeService = $service;
     }
 
-    public function testCreate_createNodeWithNextSequence(): void
+    public function testNodeServiceCanBeInstantiated(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $existingNode = $this->createMock(Node::class);
-        $existingNode->method('getSequence')->willReturn(5);
-        
-        // 使用自定义的TestArrayCollection，它包含max方法
-        $nodes = new TestArrayCollection([$existingNode]);
-        
-        // 使用部分模拟来模拟某些方法
-        $task = $this->createPartialMock(Task::class, ['getNodes']);
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $name = 'Test Node';
-        $type = NodeType::RESOURCE; // 使用实际存在的枚举值
-        
-        $this->entityManager->expects($this->once())
-            ->method('persist')
-            ->with($this->callback(function(Node $node) use ($name, $type) {
-                return $node->getName() === $name && 
-                       $node->getType() === $type && 
-                       $node->getSequence() === 6;
-            }));
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
-        $result = $this->nodeService->create($task, $name, $type);
-
-        // Assert
-        $this->assertEquals($name, $result->getName());
-        $this->assertEquals($type, $result->getType());
-        $this->assertEquals(6, $result->getSequence());
-        $this->assertSame($task, $result->getTask());
+        $this->assertInstanceOf(NodeService::class, $this->nodeService);
     }
 
-    public function testAddCondition_addsConditionToNode(): void
+    public function testCreateCreatesNodeWithCorrectSequence(): void
     {
-        // Arrange
-        $node = $this->createMock(Node::class);
-        $name = 'Test Condition';
-        $field = 'field1';
-        $operator = ConditionOperator::EQUAL; // 修正为EQUAL而不是EQUALS
-        $value = 'value1';
-        
-        $this->entityManager->expects($this->once())
-            ->method('persist')
-            ->with($this->callback(function(NodeCondition $condition) use ($name, $field, $operator, $value, $node) {
-                return $condition->getName() === $name && 
-                       $condition->getField() === $field && 
-                       $condition->getOperator() === $operator && 
-                       $condition->getValue() === $value &&
-                       $condition->getNode() === $node;
-            }));
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->flush();
 
-        // Act
-        $result = $this->nodeService->addCondition($node, $name, $field, $operator, $value);
+        $node = $this->nodeService->create($task, 'Test Node', NodeType::RESOURCE);
 
-        // Assert
-        $this->assertEquals($name, $result->getName());
-        $this->assertEquals($field, $result->getField());
-        $this->assertEquals($operator, $result->getOperator());
-        $this->assertEquals($value, $result->getValue());
-        $this->assertSame($node, $result->getNode());
+        // Set required ResourceConfig for RESOURCE type nodes
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('points');
+        $resourceConfig->setAmount(100);
+        $node->setResource($resourceConfig);
+        self::getEntityManager()->flush();
+
+        $this->assertInstanceOf(Node::class, $node);
+        $this->assertSame('Test Node', $node->getName());
+        $this->assertSame(NodeType::RESOURCE, $node->getType());
+        $this->assertSame($task, $node->getTask());
+        $this->assertSame(1, $node->getSequence());
+        $this->assertNotNull($node->getId());
     }
 
-    public function testSetDelay_whenNodeHasNoDelay_createsNewDelay(): void
+    public function testCreateAssignsCorrectSequenceWithExistingNodes(): void
     {
-        // Arrange
-        $node = $this->createMock(Node::class);
-        $node->method('getDelay')->willReturn(null);
-        
-        $type = DelayType::MINUTES;
-        $value = '30';
-        
-        $this->entityManager->expects($this->once())
-            ->method('persist');
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
 
-        // Act
-        $result = $this->nodeService->setDelay($node, $type, $value);
+        // Create existing node
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
 
-        // Assert
-        $this->assertInstanceOf(NodeDelay::class, $result);
-        $this->assertEquals($type, $result->getType());
-        $this->assertEquals($value, $result->getValue());
-        $this->assertSame($node, $result->getNode());
+        $existingNode = new Node();
+        $existingNode->setName('Existing');
+        $existingNode->setType(NodeType::START);
+        $existingNode->setSequence(1);
+        $existingNode->setTask($task);
+        $existingNode->setResource($resourceConfig);
+        $task->addNode($existingNode);
+        self::getEntityManager()->persist($existingNode);
+        self::getEntityManager()->flush();
+
+        $newNode = $this->nodeService->create($task, 'New Node', NodeType::RESOURCE);
+
+        // Set required ResourceConfig for RESOURCE type nodes
+        $newResourceConfig = new ResourceConfig();
+        $newResourceConfig->setType('points');
+        $newResourceConfig->setAmount(100);
+        $newNode->setResource($newResourceConfig);
+        self::getEntityManager()->flush();
+
+        $this->assertSame(2, $newNode->getSequence());
     }
 
-    public function testSetDelay_whenNodeHasExistingDelay_updatesDelay(): void
+    public function testCreateHandlesMultipleExistingNodes(): void
     {
-        // Arrange
-        $existingDelay = $this->createMock(NodeDelay::class);
-        
-        $node = $this->createMock(Node::class);
-        $node->method('getDelay')->willReturn($existingDelay);
-        
-        $type = DelayType::HOURS;
-        $value = '2';
-        
-        $existingDelay->expects($this->once())
-            ->method('setType')
-            ->with($type)
-            ->willReturnSelf();
-            
-        $existingDelay->expects($this->once())
-            ->method('setValue')
-            ->with($value)
-            ->willReturnSelf();
-            
-        $existingDelay->expects($this->once())
-            ->method('setNode')
-            ->with($node)
-            ->willReturnSelf();
-        
-        $this->entityManager->expects($this->never())
-            ->method('persist');
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
 
-        // Act
-        $result = $this->nodeService->setDelay($node, $type, $value);
+        // Create multiple existing nodes
+        for ($i = 1; $i <= 3; ++$i) {
+            $resourceConfig = new ResourceConfig();
+            $resourceConfig->setType('none');
+            $resourceConfig->setAmount(0);
 
-        // Assert
-        $this->assertSame($existingDelay, $result);
+            $node = new Node();
+            $node->setName('Node ' . $i);
+            $node->setType(NodeType::RESOURCE);
+            $node->setSequence($i);
+            $node->setTask($task);
+            $node->setResource($resourceConfig);
+            $task->addNode($node);
+            self::getEntityManager()->persist($node);
+        }
+        self::getEntityManager()->flush();
+
+        $newNode = $this->nodeService->create($task, 'New Node', NodeType::DELAY);
+
+        $this->assertSame(4, $newNode->getSequence());
     }
 
-    public function testUpdateSequence_withValidSequence_updatesNodeSequence(): void
+    public function testAddConditionCreatesNodeCondition(): void
     {
-        // Arrange
-        $node = $this->createMock(Node::class);
-        $node->method('getSequence')->willReturn(3);
-        $node->expects($this->once())
-            ->method('setSequence')
-            ->with(5);
-            
-        $node1 = $this->createMock(Node::class);
-        $node1->method('getSequence')->willReturn(4);
-        $node1->expects($this->once())
-            ->method('setSequence')
-            ->with(3);
-            
-        $node2 = $this->createMock(Node::class);
-        $node2->method('getSequence')->willReturn(5);
-        $node2->expects($this->once())
-            ->method('setSequence')
-            ->with(4);
-        
-        // 创建一个真实的TestArrayCollection，其中包含了所有节点
-        $nodesArray = [$node, $node1, $node2];
-        $nodes = new TestArrayCollection($nodesArray);
-        
-        $task = $this->createMock(Task::class);
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $node->method('getTask')->willReturn($task);
-        $node->method('getType')->willReturn(NodeType::RESOURCE); // 使用正确的枚举值
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $task = $this->createTask();
+        $node = $this->createNode($task, 'Test Node', NodeType::CONDITION);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($node);
+        self::getEntityManager()->flush();
 
-        // Act
-        $this->nodeService->updateSequence($node, 5);
-        
-        // 由于方法没有返回值，我们简单断言true以通过测试
-        $this->assertTrue(true);
+        $condition = $this->nodeService->addCondition(
+            $node,
+            'Age Check',
+            'age',
+            ConditionOperator::GREATER_THAN,
+            '18'
+        );
+
+        $this->assertNotNull($condition->getId());
+        $this->assertSame('Age Check', $condition->getName());
+        $this->assertSame('age', $condition->getField());
+        $this->assertSame(ConditionOperator::GREATER_THAN, $condition->getOperator());
+        $this->assertSame('18', $condition->getValue());
+        $this->assertSame($node, $condition->getNode());
     }
 
-    public function testUpdateSequence_withSequenceLessThanOne_throwsException(): void
+    public function testAddConditionWithDifferentOperators(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        
-        $node = $this->createMock(Node::class);
-        $node->method('getTask')->willReturn($task);
-        
-        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
+        $task = $this->createTask();
+        $node = $this->createNode($task, 'Test Node', NodeType::CONDITION);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($node);
+        self::getEntityManager()->flush();
+
+        $condition = $this->nodeService->addCondition(
+            $node,
+            'Status Check',
+            'status',
+            ConditionOperator::EQUAL,
+            'active'
+        );
+
+        $this->assertSame(ConditionOperator::EQUAL, $condition->getOperator());
+        $this->assertSame('active', $condition->getValue());
+    }
+
+    public function testDeleteRemovesNodeAndUpdatesSequences(): void
+    {
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
+
+        // Create nodes with sequences 1, 2, 3
+        $node1 = $this->createNode($task, 'Node 1', NodeType::RESOURCE, 1);
+        $node2 = $this->createNode($task, 'Node 2', NodeType::RESOURCE, 2);
+        $node3 = $this->createNode($task, 'Node 3', NodeType::RESOURCE, 3);
+
+        self::getEntityManager()->persist($node1);
+        self::getEntityManager()->persist($node2);
+        self::getEntityManager()->persist($node3);
+        self::getEntityManager()->flush();
+
+        $node2Id = $node2->getId();
+
+        // Delete middle node
+        $this->nodeService->delete($node2);
+
+        // Verify node is deleted
+        $deletedNode = self::getEntityManager()->find(Node::class, $node2Id);
+        $this->assertNull($deletedNode);
+
+        // Verify sequences are updated
+        self::getEntityManager()->refresh($node3);
+        $this->assertSame(2, $node3->getSequence());
+    }
+
+    public function testDeleteThrowsExceptionForStartNode(): void
+    {
+        $task = $this->createTask();
+        $startNode = $this->createNode($task, 'Start', NodeType::START);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(NodeException::class);
+        $this->expectExceptionMessage('Cannot delete START node');
+
+        $this->nodeService->delete($startNode);
+    }
+
+    public function testDeleteThrowsExceptionForEndNode(): void
+    {
+        $task = $this->createTask();
+        $endNode = $this->createNode($task, 'End', NodeType::END);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(NodeException::class);
+        $this->expectExceptionMessage('Cannot delete END node');
+
+        $this->nodeService->delete($endNode);
+    }
+
+    public function testUpdateSequenceMovesNodeForward(): void
+    {
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
+
+        // Create nodes with sequences 1, 2, 3, 4
+        $node1 = $this->createNode($task, 'Node 1', NodeType::START, 1);
+        $node2 = $this->createNode($task, 'Node 2', NodeType::RESOURCE, 2);
+        $node3 = $this->createNode($task, 'Node 3', NodeType::DELAY, 3);
+        $node4 = $this->createNode($task, 'Node 4', NodeType::END, 4);
+
+        self::getEntityManager()->persist($node1);
+        self::getEntityManager()->persist($node2);
+        self::getEntityManager()->persist($node3);
+        self::getEntityManager()->persist($node4);
+        self::getEntityManager()->flush();
+
+        // Move node 2 to position 3
+        $this->nodeService->updateSequence($node2, 3);
+
+        self::getEntityManager()->refresh($node1);
+        self::getEntityManager()->refresh($node2);
+        self::getEntityManager()->refresh($node3);
+        self::getEntityManager()->refresh($node4);
+
+        $this->assertSame(1, $node1->getSequence());
+        $this->assertSame(3, $node2->getSequence());
+        $this->assertSame(2, $node3->getSequence());
+        $this->assertSame(4, $node4->getSequence());
+    }
+
+    public function testUpdateSequenceMovesNodeBackward(): void
+    {
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
+
+        // Create nodes with sequences 1, 2, 3, 4
+        $node1 = $this->createNode($task, 'Node 1', NodeType::START, 1);
+        $node2 = $this->createNode($task, 'Node 2', NodeType::RESOURCE, 2);
+        $node3 = $this->createNode($task, 'Node 3', NodeType::DELAY, 3);
+        $node4 = $this->createNode($task, 'Node 4', NodeType::END, 4);
+
+        self::getEntityManager()->persist($node1);
+        self::getEntityManager()->persist($node2);
+        self::getEntityManager()->persist($node3);
+        self::getEntityManager()->persist($node4);
+        self::getEntityManager()->flush();
+
+        // Move node 3 to position 2
+        $this->nodeService->updateSequence($node3, 2);
+
+        self::getEntityManager()->refresh($node1);
+        self::getEntityManager()->refresh($node2);
+        self::getEntityManager()->refresh($node3);
+        self::getEntityManager()->refresh($node4);
+
+        $this->assertSame(1, $node1->getSequence());
+        $this->assertSame(3, $node2->getSequence());
+        $this->assertSame(2, $node3->getSequence());
+        $this->assertSame(4, $node4->getSequence());
+    }
+
+    public function testUpdateSequenceDoesNothingWhenSameSequence(): void
+    {
+        $task = $this->createTask();
+        $node = $this->createNode($task, 'Node', NodeType::RESOURCE, 2);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($node);
+        self::getEntityManager()->flush();
+
+        $this->nodeService->updateSequence($node, 2);
+
+        $this->assertSame(2, $node->getSequence());
+    }
+
+    public function testUpdateSequenceThrowsExceptionForInvalidSequence(): void
+    {
+        $task = $this->createTask();
+        $node = $this->createNode($task, 'Node', NodeType::RESOURCE, 1);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($node);
+        self::getEntityManager()->flush();
+
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Sequence must be greater than 0');
 
-        // Act
         $this->nodeService->updateSequence($node, 0);
     }
 
-    public function testUpdateSequence_withSequenceGreaterThanMax_throwsException(): void
+    public function testUpdateSequenceThrowsExceptionForTooHighSequence(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        
-        $node = $this->createMock(Node::class);
-        $node->method('getTask')->willReturn($task);
-        
-        // 创建一个带有自定义max方法的集合
-        $node1 = $this->createMock(Node::class);
-        $node1->method('getSequence')->willReturn(1);
-        
-        $node2 = $this->createMock(Node::class);
-        $node2->method('getSequence')->willReturn(2);
-        
-        $node3 = $this->createMock(Node::class);
-        $node3->method('getSequence')->willReturn(3);
-        
-        $nodes = new TestArrayCollection([$node1, $node2, $node3]);
-        
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Sequence must be less than or equal to 3');
+        $task = $this->createTask();
+        $node = $this->createNode($task, 'Node', NodeType::RESOURCE, 1);
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->persist($node);
+        self::getEntityManager()->flush();
 
-        // Act
-        $this->nodeService->updateSequence($node, 4);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Sequence must be less than or equal to 1');
+
+        $this->nodeService->updateSequence($node, 5);
     }
 
-    public function testUpdateSequence_withStartNodeNotFirst_throwsException(): void
+    public function testUpdateSequenceThrowsExceptionForStartNodeNotFirst(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        
-        $node = $this->createMock(Node::class);
-        $node->method('getTask')->willReturn($task);
-        $node->method('getType')->willReturn(NodeType::START);
-        
-        // 创建一个带有自定义max方法的集合
-        $node1 = $this->createMock(Node::class);
-        $node1->method('getSequence')->willReturn(1);
-        
-        $node2 = $this->createMock(Node::class);
-        $node2->method('getSequence')->willReturn(2);
-        
-        $node3 = $this->createMock(Node::class);
-        $node3->method('getSequence')->willReturn(3);
-        
-        $nodes = new TestArrayCollection([$node1, $node2, $node3]);
-        
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
+
+        $startNode = $this->createNode($task, 'Start', NodeType::START, 1);
+        $resourceNode = $this->createNode($task, 'Resource', NodeType::RESOURCE, 2);
+
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->persist($resourceNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('START node must be the first node');
 
-        // Act
-        $this->nodeService->updateSequence($node, 2);
+        $this->nodeService->updateSequence($startNode, 2);
     }
 
-    public function testUpdateSequence_withEndNodeNotLast_throwsException(): void
+    public function testUpdateSequenceThrowsExceptionForEndNodeNotLast(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        
-        $node = $this->createMock(Node::class);
-        $node->method('getTask')->willReturn($task);
-        $node->method('getType')->willReturn(NodeType::END);
-        
-        // 创建一个带有自定义max方法的集合
-        $node1 = $this->createMock(Node::class);
-        $node1->method('getSequence')->willReturn(1);
-        
-        $node2 = $this->createMock(Node::class);
-        $node2->method('getSequence')->willReturn(2);
-        
-        $node3 = $this->createMock(Node::class);
-        $node3->method('getSequence')->willReturn(3);
-        
-        $nodes = new TestArrayCollection([$node1, $node2, $node3]);
-        
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $this->expectException(\MarketingPlanBundle\Exception\InvalidArgumentException::class);
+        $task = $this->createTask();
+        self::getEntityManager()->persist($task);
+
+        $startNode = $this->createNode($task, 'Start', NodeType::START, 1);
+        $endNode = $this->createNode($task, 'End', NodeType::END, 2);
+
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('END node must be the last node');
 
-        // Act
-        $this->nodeService->updateSequence($node, 2);
+        $this->nodeService->updateSequence($endNode, 1);
     }
 
-    public function testDelete_withRegularNode_removesNodeAndUpdatesSequences(): void
+    private function createTask(): Task
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        
-        $node = $this->createMock(Node::class);
-        $node->method('getTask')->willReturn($task);
-        $node->method('getType')->willReturn(NodeType::RESOURCE); // 使用正确的枚举值
-        $node->method('getSequence')->willReturn(2);
-        
-        $node1 = $this->createMock(Node::class);
-        $node1->method('getSequence')->willReturn(3);
-        $node1->expects($this->once())
-            ->method('setSequence')
-            ->with(2);
-            
-        $node2 = $this->createMock(Node::class);
-        $node2->method('getSequence')->willReturn(4);
-        $node2->expects($this->once())
-            ->method('setSequence')
-            ->with(3);
-        
-        // 创建一个真实的ArrayCollection，其中包含了所有节点
-        $nodesArray = [$node, $node1, $node2];
-        $nodes = new ArrayCollection($nodesArray);
-        
-        $task->method('getNodes')->willReturn($nodes);
-        
-        $this->entityManager->expects($this->once())
-            ->method('remove')
-            ->with($node);
-            
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $task = new Task();
+        $task->setTitle('Test Task');
+        $task->setDescription('Test Description');
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setStartTime(new \DateTimeImmutable());
+        $task->setEndTime(new \DateTimeImmutable('+1 day'));
 
-        // Act
-        $this->nodeService->delete($node);
-        
-        // 由于方法没有返回值，断言测试通过
-        $this->assertTrue(true);
+        $crowd = $this->createTag('Test Tag');
+        $task->setCrowd($crowd);
+
+        return $task;
     }
 
-    public function testDelete_withStartNode_throwsException(): void
+    private function createNode(Task $task, string $name, NodeType $type, int $sequence = 1): Node
     {
-        // Arrange
-        $node = $this->createMock(Node::class);
-        $node->method('getType')->willReturn(NodeType::START);
-        
-        $this->expectException(\MarketingPlanBundle\Exception\NodeException::class);
-        $this->expectExceptionMessage('Cannot delete START node');
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
 
-        // Act
-        $this->nodeService->delete($node);
+        $node = new Node();
+        $node->setName($name);
+        $node->setType($type);
+        $node->setSequence($sequence);
+        $node->setTask($task);
+        $node->setResource($resourceConfig);
+
+        $task->addNode($node);
+
+        return $node;
     }
 
-    public function testDelete_withEndNode_throwsException(): void
+    private function createTag(string $name): Tag
     {
-        // Arrange
-        $node = $this->createMock(Node::class);
-        $node->method('getType')->willReturn(NodeType::END);
-        
-        $this->expectException(\MarketingPlanBundle\Exception\NodeException::class);
-        $this->expectExceptionMessage('Cannot delete END node');
+        $catalogType = new CatalogType();
+        $catalogType->setName('test-type');
+        $catalogType->setCode('test_type');
+        self::getEntityManager()->persist($catalogType);
 
-        // Act
-        $this->nodeService->delete($node);
+        $catalog = new Catalog();
+        $catalog->setName('Test Category');
+        $catalog->setType($catalogType);
+        $catalog->setEnabled(true);
+        self::getEntityManager()->persist($catalog);
+
+        $tag = new Tag();
+        $tag->setName($name);
+        $tag->setType(TagType::StaticTag);
+        $tag->setCatalog($catalog);
+        $tag->setValid(true);
+        self::getEntityManager()->persist($tag);
+        self::getEntityManager()->flush();
+
+        return $tag;
     }
-} 
+}

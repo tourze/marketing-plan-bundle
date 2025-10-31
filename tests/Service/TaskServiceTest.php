@@ -2,326 +2,431 @@
 
 namespace MarketingPlanBundle\Tests\Service;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\ORM\EntityManagerInterface;
 use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\NodeType;
 use MarketingPlanBundle\Enum\TaskStatus;
+use MarketingPlanBundle\Exception\TaskException;
 use MarketingPlanBundle\Service\TaskService;
-use PHPUnit\Framework\TestCase;
-use Tourze\UserTagContracts\TagInterface;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use Tourze\CatalogBundle\Entity\Catalog;
+use Tourze\CatalogBundle\Entity\CatalogType;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
+use Tourze\ResourceManageBundle\Entity\ResourceConfig;
+use UserTagBundle\Entity\Tag;
+use UserTagBundle\Enum\TagType;
 
-class TaskServiceTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(TaskService::class)]
+#[RunTestsInSeparateProcesses]
+final class TaskServiceTest extends AbstractIntegrationTestCase
 {
-    private EntityManagerInterface $entityManager;
     private TaskService $taskService;
 
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->taskService = new TaskService($this->entityManager);
+        $service = self::getContainer()->get(TaskService::class);
+        $this->assertInstanceOf(TaskService::class, $service);
+        $this->taskService = $service;
     }
 
-    public function testCreate_withValidData_createsTaskWithStartAndEndNodes(): void
+    public function testTaskServiceCanBeInstantiated(): void
     {
-        // Arrange
-        $title = 'Test Task';
-        $crowd = $this->createMock(TagInterface::class);
-        $startTime = new \DateTime('2023-01-01 00:00:00');
-        $endTime = new \DateTime('2023-01-31 23:59:59');
+        $this->assertInstanceOf(TaskService::class, $this->taskService);
+    }
 
-        // PHPUnit 10不再支持withConsecutive，需要单独配置每次调用
-        $this->entityManager->expects($this->exactly(3))
-            ->method('persist');
+    public function testCreateCreatesTaskWithStartAndEndNodes(): void
+    {
+        $crowd = $this->createTag('Test Crowd 1');
+        $startTime = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $endTime = new \DateTimeImmutable('2024-01-01 18:00:00');
 
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+        $task = $this->taskService->create('Test Task', $crowd, $startTime, $endTime);
 
-        // Act
-        $task = $this->taskService->create($title, $crowd, $startTime, $endTime);
-
-        // Assert
-        $this->assertSame($title, $task->getTitle());
+        $this->assertInstanceOf(Task::class, $task);
+        $this->assertSame('Test Task', $task->getTitle());
         $this->assertSame($crowd, $task->getCrowd());
         $this->assertEquals($startTime, $task->getStartTime());
         $this->assertEquals($endTime, $task->getEndTime());
-        $this->assertEquals(TaskStatus::DRAFT, $task->getStatus());
+        $this->assertSame(TaskStatus::DRAFT, $task->getStatus());
+        $this->assertNotNull($task->getId());
+
+        // Verify start and end nodes are created
+        $nodes = $task->getNodes();
+        $this->assertCount(2, $nodes);
+
+        $startNode = $nodes->first();
+        $endNode = $nodes->last();
+
+        $this->assertInstanceOf(Node::class, $startNode);
+        $this->assertInstanceOf(Node::class, $endNode);
+
+        $this->assertSame('开始', $startNode->getName());
+        $this->assertSame(NodeType::START, $startNode->getType());
+        $this->assertSame(1, $startNode->getSequence());
+        $this->assertSame($task, $startNode->getTask());
+
+        $this->assertSame('结束', $endNode->getName());
+        $this->assertSame(NodeType::END, $endNode->getType());
+        $this->assertSame(999, $endNode->getSequence());
+        $this->assertSame($task, $endNode->getTask());
     }
 
-    public function testPublish_withValidTask_setsTaskToRunning(): void
+    public function testCreateWithDifferentTimeFormats(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $startNode = $this->createMock(Node::class);
-        $endNode = $this->createMock(Node::class);
-        
-        // 使用实际的ArrayCollection
-        $nodesArray = [$startNode, $endNode];
-        $nodes = new ArrayCollection($nodesArray);
-            
-        $startNode->method('getType')->willReturn(NodeType::START);
-        $startNode->method('getSequence')->willReturn(1);
-        $endNode->method('getType')->willReturn(NodeType::END);
-        $endNode->method('getSequence')->willReturn(2);
+        $crowd = $this->createTag('Test Crowd 1');
+        $startTime = new \DateTime('2024-02-01 09:00:00');
+        $endTime = new \DateTime('2024-02-01 17:00:00');
 
-        $task->method('getNodes')->willReturn($nodes);
+        $task = $this->taskService->create('Another Task', $crowd, $startTime, $endTime);
 
-        $task->expects($this->once())
-            ->method('setStatus')
-            ->with(TaskStatus::RUNNING);
+        $this->assertInstanceOf(\DateTimeImmutable::class, $task->getStartTime());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $task->getEndTime());
+        $this->assertEquals($startTime->format('Y-m-d H:i:s'), $task->getStartTime()->format('Y-m-d H:i:s'));
+        $this->assertEquals($endTime->format('Y-m-d H:i:s'), $task->getEndTime()->format('Y-m-d H:i:s'));
+    }
 
-        $this->entityManager->expects($this->once())
-            ->method('flush');
+    public function testPublishSucceedsWithValidTask(): void
+    {
+        $task = $this->createValidTask();
 
-        // Act
         $this->taskService->publish($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::RUNNING, $task->getStatus());
     }
 
-    public function testPublish_withoutStartNode_throwsException(): void
+    public function testPublishThrowsExceptionWhenMissingStartNode(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $endNode = $this->createMock(Node::class);
-        
-        // 使用实际的ArrayCollection，只包含END节点
-        $nodesArray = [$endNode];
-        $nodes = new ArrayCollection($nodesArray);
-            
-        $endNode->method('getType')->willReturn(NodeType::END);
-        
-        $task->method('getNodes')->willReturn($nodes);
+        $task = $this->createTaskWithoutNodes();
 
-        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
+        // Add only end node
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
+
+        $endNode = new Node();
+        $endNode->setName('End');
+        $endNode->setType(NodeType::END);
+        $endNode->setSequence(1);
+        $endNode->setTask($task);
+        $endNode->setResource($resourceConfig);
+        $task->addNode($endNode);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(TaskException::class);
         $this->expectExceptionMessage('Task must have START and END nodes');
 
-        // Act
         $this->taskService->publish($task);
     }
 
-    public function testPublish_withoutEndNode_throwsException(): void
+    public function testPublishThrowsExceptionWhenMissingEndNode(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $startNode = $this->createMock(Node::class);
-        
-        // 使用实际的ArrayCollection，只包含START节点
-        $nodesArray = [$startNode];
-        $nodes = new ArrayCollection($nodesArray);
-            
-        $startNode->method('getType')->willReturn(NodeType::START);
-        
-        $task->method('getNodes')->willReturn($nodes);
+        $task = $this->createTaskWithoutNodes();
 
-        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
+        // Add only start node
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
+
+        $startNode = new Node();
+        $startNode->setName('Start');
+        $startNode->setType(NodeType::START);
+        $startNode->setSequence(1);
+        $startNode->setTask($task);
+        $startNode->setResource($resourceConfig);
+        $task->addNode($startNode);
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(TaskException::class);
         $this->expectExceptionMessage('Task must have START and END nodes');
 
-        // Act
         $this->taskService->publish($task);
     }
 
-    public function testPublish_withDiscontinuousSequence_throwsException(): void
+    public function testPublishThrowsExceptionWhenSequencesNotContinuous(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $startNode = $this->createMock(Node::class);
-        $endNode = $this->createMock(Node::class);
-        
-        // 使用实际的ArrayCollection
-        $startNode->method('getType')->willReturn(NodeType::START);
-        $startNode->method('getSequence')->willReturn(1);
-        $endNode->method('getType')->willReturn(NodeType::END);
-        $endNode->method('getSequence')->willReturn(3); // 有间隔的序号
-        
-        $nodesArray = [$startNode, $endNode];
-        $nodes = new ArrayCollection($nodesArray);
-        
-        $task->method('getNodes')->willReturn($nodes);
+        $task = $this->createTaskWithoutNodes();
 
-        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
+        // Create nodes with non-continuous sequences (1, 3, 5)
+        $startResourceConfig = new ResourceConfig();
+        $startResourceConfig->setType('none');
+        $startResourceConfig->setAmount(0);
+
+        $startNode = new Node();
+        $startNode->setName('Start');
+        $startNode->setType(NodeType::START);
+        $startNode->setSequence(1);
+        $startNode->setTask($task);
+        $startNode->setResource($startResourceConfig);
+
+        $middleResourceConfig = new ResourceConfig();
+        $middleResourceConfig->setType('none');
+        $middleResourceConfig->setAmount(0);
+
+        $middleNode = new Node();
+        $middleNode->setName('Middle');
+        $middleNode->setType(NodeType::RESOURCE);
+        $middleNode->setSequence(3);
+        $middleNode->setTask($task);
+        $middleNode->setResource($middleResourceConfig);
+
+        $endResourceConfig = new ResourceConfig();
+        $endResourceConfig->setType('none');
+        $endResourceConfig->setAmount(0);
+
+        $endNode = new Node();
+        $endNode->setName('End');
+        $endNode->setType(NodeType::END);
+        $endNode->setSequence(5);
+        $endNode->setTask($task);
+        $endNode->setResource($endResourceConfig);
+
+        // 将节点添加到任务
+        $task->addNode($startNode);
+        $task->addNode($middleNode);
+        $task->addNode($endNode);
+
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->persist($middleNode);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        $this->expectException(TaskException::class);
         $this->expectExceptionMessage('Node sequences must be continuous');
 
-        // Act
         $this->taskService->publish($task);
     }
 
-    public function testPause_whenRunning_setsTaskToPaused(): void
+    public function testPauseSucceedsWhenTaskIsRunning(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
-        
-        $task->expects($this->once())
-            ->method('setStatus')
-            ->with(TaskStatus::PAUSED);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::RUNNING);
+        self::getEntityManager()->flush();
 
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
         $this->taskService->pause($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::PAUSED, $task->getStatus());
     }
 
-    public function testPause_whenNotRunning_throwsException(): void
+    public function testPauseThrowsExceptionWhenTaskNotRunning(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $task->method('getStatus')->willReturn(TaskStatus::DRAFT);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::DRAFT);
+        self::getEntityManager()->flush();
 
-        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
+        $this->expectException(TaskException::class);
         $this->expectExceptionMessage('Task is not running');
 
-        // Act
         $this->taskService->pause($task);
     }
 
-    public function testResume_whenPaused_setsTaskToRunning(): void
+    public function testResumeSucceedsWhenTaskIsPaused(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $task->method('getStatus')->willReturn(TaskStatus::PAUSED);
-        
-        $task->expects($this->once())
-            ->method('setStatus')
-            ->with(TaskStatus::RUNNING);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::PAUSED);
+        self::getEntityManager()->flush();
 
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
         $this->taskService->resume($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::RUNNING, $task->getStatus());
     }
 
-    public function testResume_whenNotPaused_throwsException(): void
+    public function testResumeThrowsExceptionWhenTaskNotPaused(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::DRAFT);
+        self::getEntityManager()->flush();
 
-        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
+        $this->expectException(TaskException::class);
         $this->expectExceptionMessage('Task is not paused');
 
-        // Act
         $this->taskService->resume($task);
     }
 
-    public function testFinish_whenRunning_setsTaskToFinished(): void
+    public function testFinishSucceedsWhenTaskIsRunning(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
-        
-        $task->expects($this->once())
-            ->method('setStatus')
-            ->with(TaskStatus::FINISHED);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::RUNNING);
+        self::getEntityManager()->flush();
 
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
         $this->taskService->finish($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::FINISHED, $task->getStatus());
     }
 
-    public function testFinish_whenNotRunning_throwsException(): void
+    public function testFinishThrowsExceptionWhenTaskNotRunning(): void
     {
-        // Arrange
-        $task = $this->createMock(Task::class);
-        $task->method('getStatus')->willReturn(TaskStatus::PAUSED);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::DRAFT);
+        self::getEntityManager()->flush();
 
-        $this->expectException(\MarketingPlanBundle\Exception\TaskException::class);
+        $this->expectException(TaskException::class);
         $this->expectExceptionMessage('Task is not running');
 
-        // Act
         $this->taskService->finish($task);
     }
 
-    public function testCheckStatus_whenDraftAndStartTimeReached_publishesTask(): void
+    public function testCheckStatusStartsTaskWhenTimeArrives(): void
     {
-        // Arrange
-        // 创建部分模拟对象，同时允许自定义其他方法
-        $task = $this->createPartialMock(Task::class, ['getStatus', 'getStartTime', 'getEndTime', 'setStatus', 'getNodes']);
-        $task->method('getStatus')->willReturn(TaskStatus::DRAFT);
-        $task->method('getStartTime')->willReturn(new \DateTimeImmutable('yesterday'));
-        
-        // 设置getNodes方法的行为
-        $startNode = $this->createMock(Node::class);
-        $endNode = $this->createMock(Node::class);
-        
-        $startNode->method('getType')->willReturn(NodeType::START);
-        $startNode->method('getSequence')->willReturn(1);
-        $endNode->method('getType')->willReturn(NodeType::END);
-        $endNode->method('getSequence')->willReturn(2);
-        
-        // 使用实际的ArrayCollection
-        $nodesArray = [$startNode, $endNode];
-        $nodes = new ArrayCollection($nodesArray);
-        
-        $task->method('getNodes')->willReturn($nodes);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setStartTime(new \DateTimeImmutable('-1 hour')); // Past time
+        self::getEntityManager()->flush();
 
-        $task->expects($this->once())
-            ->method('setStatus')
-            ->with(TaskStatus::RUNNING);
-
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
         $this->taskService->checkStatus($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::RUNNING, $task->getStatus());
     }
 
-    public function testCheckStatus_whenRunningAndEndTimeReached_finishesTask(): void
+    public function testCheckStatusFinishesTaskWhenEndTimeArrives(): void
     {
-        // Arrange
-        $task = $this->createPartialMock(Task::class, ['getStatus', 'getStartTime', 'getEndTime', 'setStatus']);
-        $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
-        $task->method('getEndTime')->willReturn(new \DateTimeImmutable('yesterday'));
-        
-        $task->expects($this->once())
-            ->method('setStatus')
-            ->with(TaskStatus::FINISHED);
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::RUNNING);
+        $task->setEndTime(new \DateTimeImmutable('-1 hour')); // Past time
+        self::getEntityManager()->flush();
 
-        $this->entityManager->expects($this->once())
-            ->method('flush');
-
-        // Act
         $this->taskService->checkStatus($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::FINISHED, $task->getStatus());
     }
 
-    public function testCheckStatus_whenRunningAndEndTimeNotReached_doesNothing(): void
+    public function testCheckStatusDoesNothingWhenNotTimeYet(): void
     {
-        // Arrange
-        $task = $this->createPartialMock(Task::class, ['getStatus', 'getStartTime', 'getEndTime', 'setStatus']);
-        $task->method('getStatus')->willReturn(TaskStatus::RUNNING);
-        $task->method('getEndTime')->willReturn(new \DateTimeImmutable('tomorrow'));
-        
-        $task->expects($this->never())
-            ->method('setStatus');
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setStartTime(new \DateTimeImmutable('+1 hour')); // Future time
+        self::getEntityManager()->flush();
 
-        $this->entityManager->expects($this->never())
-            ->method('flush');
-
-        // Act
         $this->taskService->checkStatus($task);
-        
-        // 确认测试通过
-        $this->assertTrue(true);
+
+        $this->assertSame(TaskStatus::DRAFT, $task->getStatus());
     }
-} 
+
+    public function testCheckStatusDoesNothingWhenRunningAndNotEndTime(): void
+    {
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::RUNNING);
+        $task->setEndTime(new \DateTimeImmutable('+1 hour')); // Future time
+        self::getEntityManager()->flush();
+
+        $this->taskService->checkStatus($task);
+
+        $this->assertSame(TaskStatus::RUNNING, $task->getStatus());
+    }
+
+    public function testCheckStatusDoesNothingForFinishedTask(): void
+    {
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::FINISHED);
+        self::getEntityManager()->flush();
+
+        $this->taskService->checkStatus($task);
+
+        $this->assertSame(TaskStatus::FINISHED, $task->getStatus());
+    }
+
+    public function testCheckStatusDoesNothingForPausedTask(): void
+    {
+        $task = $this->createValidTask();
+        $task->setStatus(TaskStatus::PAUSED);
+        $task->setEndTime(new \DateTimeImmutable('-1 hour')); // Past end time
+        self::getEntityManager()->flush();
+
+        $this->taskService->checkStatus($task);
+
+        $this->assertSame(TaskStatus::PAUSED, $task->getStatus());
+    }
+
+    private function createValidTask(): Task
+    {
+        $crowd = $this->createTag('Test Crowd 1');
+        $task = new Task();
+        $task->setTitle('Valid Task');
+        $task->setDescription('Valid Task Description');
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setCrowd($crowd);
+        $task->setStartTime(new \DateTimeImmutable());
+        $task->setEndTime(new \DateTimeImmutable('+1 day'));
+
+        self::getEntityManager()->persist($task);
+
+        // Create start and end nodes with continuous sequences
+        $startResourceConfig = new ResourceConfig();
+        $startResourceConfig->setType('none');
+        $startResourceConfig->setAmount(0);
+
+        $startNode = new Node();
+        $startNode->setName('Start');
+        $startNode->setType(NodeType::START);
+        $startNode->setSequence(1);
+        $startNode->setTask($task);
+        $startNode->setResource($startResourceConfig);
+
+        $endResourceConfig = new ResourceConfig();
+        $endResourceConfig->setType('none');
+        $endResourceConfig->setAmount(0);
+
+        $endNode = new Node();
+        $endNode->setName('End');
+        $endNode->setType(NodeType::END);
+        $endNode->setSequence(2);
+        $endNode->setTask($task);
+        $endNode->setResource($endResourceConfig);
+
+        // 将节点添加到任务
+        $task->addNode($startNode);
+        $task->addNode($endNode);
+
+        self::getEntityManager()->persist($startNode);
+        self::getEntityManager()->persist($endNode);
+        self::getEntityManager()->flush();
+
+        return $task;
+    }
+
+    private function createTaskWithoutNodes(): Task
+    {
+        $crowd = $this->createTag('Test Crowd 1');
+        $task = new Task();
+        $task->setTitle('Task Without Nodes');
+        $task->setDescription('Task Without Nodes Description');
+        $task->setStatus(TaskStatus::DRAFT);
+        $task->setCrowd($crowd);
+        $task->setStartTime(new \DateTimeImmutable());
+        $task->setEndTime(new \DateTimeImmutable('+1 day'));
+
+        self::getEntityManager()->persist($task);
+        self::getEntityManager()->flush();
+
+        return $task;
+    }
+
+    private function createTag(string $name): Tag
+    {
+        $catalogType = new CatalogType();
+        $catalogType->setName('test-type');
+        $catalogType->setCode('test_type');
+        self::getEntityManager()->persist($catalogType);
+
+        $catalog = new Catalog();
+        $catalog->setName('Test Category');
+        $catalog->setType($catalogType);
+        $catalog->setEnabled(true);
+        self::getEntityManager()->persist($catalog);
+
+        $tag = new Tag();
+        $tag->setName($name);
+        $tag->setType(TagType::StaticTag);
+        $tag->setCatalog($catalog);
+        $tag->setValid(true);
+        self::getEntityManager()->persist($tag);
+        self::getEntityManager()->flush();
+
+        return $tag;
+    }
+}

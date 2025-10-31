@@ -1,11 +1,16 @@
 <?php
 
-namespace MarketingPlanBundle\Tests\Unit\Enum;
+namespace MarketingPlanBundle\Tests\Enum;
 
 use MarketingPlanBundle\Enum\EnterCondition;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitEnum\AbstractEnumTestCase;
 
-class EnterConditionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(EnterCondition::class)]
+final class EnterConditionTest extends AbstractEnumTestCase
 {
     public function testCases(): void
     {
@@ -18,7 +23,7 @@ class EnterConditionTest extends TestCase
         ];
 
         $actualCases = array_map(
-            static fn(EnterCondition $case) => $case->name,
+            static fn (EnterCondition $case) => $case->name,
             EnterCondition::cases()
         );
 
@@ -42,5 +47,23 @@ class EnterConditionTest extends TestCase
         $this->assertSame('手机号码注册', EnterCondition::MOBILE_REGISTER->getLabel());
         $this->assertSame('领取优惠券', EnterCondition::GATHER_COUPON->getLabel());
         $this->assertSame('使用优惠券', EnterCondition::CONSUME_COUPON->getLabel());
+    }
+
+    public function testToArray(): void
+    {
+        $result = EnterCondition::VISIT_URL->toArray();
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('value', $result);
+        $this->assertArrayHasKey('label', $result);
+        $this->assertSame('visit-url', $result['value']);
+        $this->assertSame('打开网页URL', $result['label']);
+
+        $result = EnterCondition::VISIT_PATH->toArray();
+        $this->assertSame('visit-wechat-mini-program-path', $result['value']);
+        $this->assertSame('打开小程序路径', $result['label']);
+
+        $result = EnterCondition::MOBILE_REGISTER->toArray();
+        $this->assertSame('mobile-register', $result['value']);
+        $this->assertSame('手机号码注册', $result['label']);
     }
 }

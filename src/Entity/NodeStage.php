@@ -7,54 +7,66 @@ use Doctrine\ORM\Mapping as ORM;
 use MarketingPlanBundle\Enum\DropReason;
 use MarketingPlanBundle\Enum\NodeStageStatus;
 use MarketingPlanBundle\Repository\NodeStageRepository;
+use Symfony\Component\Validator\Constraints as Assert;
+use Tourze\DoctrineIndexedBundle\Attribute\IndexColumn;
 use Tourze\DoctrineTimestampBundle\Traits\TimestampableAware;
 
 #[ORM\Entity(repositoryClass: NodeStageRepository::class)]
 #[ORM\Table(name: 'ims_marketing_plan_node_stage', options: ['comment' => '节点执行状态'])]
-#[ORM\Index(columns: ['user_progress_id', 'node_id'], name: 'idx_progress_node')]
-#[ORM\Index(columns: ['status'], name: 'idx_status')]
+#[ORM\Index(name: 'ims_marketing_plan_node_stage_idx_progress_node', columns: ['user_progress_id', 'node_id'])]
 class NodeStage implements \Stringable
 {
+    use TimestampableAware;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER, options: ['comment' => 'ID'])]
-    private ?int $id = 0;
+    private int $id = 0;
 
-    public function getId(): ?int
+    public function getId(): int
     {
         return $this->id;
     }
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'user_progress_id', nullable: false)]
+    #[Assert\NotNull]
     private UserProgress $userProgress;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'node_id', nullable: false)]
+    #[Assert\NotNull]
     private Node $node;
 
     #[ORM\Column(length: 50, enumType: NodeStageStatus::class, options: ['comment' => '状态'])]
+    #[Assert\NotNull]
+    #[Assert\Choice(callback: [NodeStageStatus::class, 'cases'])]
+    #[IndexColumn]
     private NodeStageStatus $status = NodeStageStatus::PENDING;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ['comment' => '进入节点时间'])]
+    #[Assert\NotNull]
     private \DateTimeImmutable $reachTime;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '触达时间'])]
+    #[Assert\Type(type: '\DateTimeImmutable')]
     private ?\DateTimeImmutable $touchTime = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '激活时间'])]
+    #[Assert\Type(type: '\DateTimeImmutable')]
     private ?\DateTimeImmutable $activeTime = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '完成时间'])]
+    #[Assert\Type(type: '\DateTimeImmutable')]
     private ?\DateTimeImmutable $finishTime = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true, options: ['comment' => '流失时间'])]
+    #[Assert\Type(type: '\DateTimeImmutable')]
     private ?\DateTimeImmutable $dropTime = null;
 
     #[ORM\Column(length: 50, enumType: DropReason::class, nullable: true, options: ['comment' => '流失原因'])]
+    #[Assert\Choice(callback: [DropReason::class, 'cases'])]
     private ?DropReason $dropReason = null;
-
-    use TimestampableAware;
 
     public function __toString(): string
     {
@@ -66,11 +78,9 @@ class NodeStage implements \Stringable
         return $this->userProgress;
     }
 
-    public function setUserProgress(UserProgress $userProgress): static
+    public function setUserProgress(UserProgress $userProgress): void
     {
         $this->userProgress = $userProgress;
-
-        return $this;
     }
 
     public function getNode(): Node
@@ -78,11 +88,9 @@ class NodeStage implements \Stringable
         return $this->node;
     }
 
-    public function setNode(Node $node): static
+    public function setNode(Node $node): void
     {
         $this->node = $node;
-
-        return $this;
     }
 
     public function getStatus(): NodeStageStatus
@@ -90,11 +98,9 @@ class NodeStage implements \Stringable
         return $this->status;
     }
 
-    public function setStatus(NodeStageStatus $status): static
+    public function setStatus(NodeStageStatus $status): void
     {
         $this->status = $status;
-
-        return $this;
     }
 
     public function getReachTime(): \DateTimeImmutable
@@ -102,11 +108,9 @@ class NodeStage implements \Stringable
         return $this->reachTime;
     }
 
-    public function setReachTime(\DateTimeImmutable $reachTime): static
+    public function setReachTime(\DateTimeImmutable $reachTime): void
     {
         $this->reachTime = $reachTime;
-
-        return $this;
     }
 
     public function getTouchTime(): ?\DateTimeImmutable
@@ -114,11 +118,9 @@ class NodeStage implements \Stringable
         return $this->touchTime;
     }
 
-    public function setTouchTime(?\DateTimeImmutable $touchTime): static
+    public function setTouchTime(?\DateTimeImmutable $touchTime): void
     {
         $this->touchTime = $touchTime;
-
-        return $this;
     }
 
     public function getActiveTime(): ?\DateTimeImmutable
@@ -126,11 +128,9 @@ class NodeStage implements \Stringable
         return $this->activeTime;
     }
 
-    public function setActiveTime(?\DateTimeImmutable $activeTime): static
+    public function setActiveTime(?\DateTimeImmutable $activeTime): void
     {
         $this->activeTime = $activeTime;
-
-        return $this;
     }
 
     public function getFinishTime(): ?\DateTimeImmutable
@@ -138,11 +138,9 @@ class NodeStage implements \Stringable
         return $this->finishTime;
     }
 
-    public function setFinishTime(?\DateTimeImmutable $finishTime): static
+    public function setFinishTime(?\DateTimeImmutable $finishTime): void
     {
         $this->finishTime = $finishTime;
-
-        return $this;
     }
 
     public function getDropTime(): ?\DateTimeImmutable
@@ -150,11 +148,9 @@ class NodeStage implements \Stringable
         return $this->dropTime;
     }
 
-    public function setDropTime(?\DateTimeImmutable $dropTime): static
+    public function setDropTime(?\DateTimeImmutable $dropTime): void
     {
         $this->dropTime = $dropTime;
-
-        return $this;
     }
 
     public function getDropReason(): ?DropReason
@@ -162,11 +158,9 @@ class NodeStage implements \Stringable
         return $this->dropReason;
     }
 
-    public function setDropReason(?DropReason $dropReason): static
+    public function setDropReason(?DropReason $dropReason): void
     {
         $this->dropReason = $dropReason;
-
-        return $this;
     }
 
     public function isTouched(): bool

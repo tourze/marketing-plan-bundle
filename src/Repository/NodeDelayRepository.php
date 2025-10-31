@@ -6,34 +6,41 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use MarketingPlanBundle\Entity\NodeDelay;
 use MarketingPlanBundle\Enum\DelayType;
+use Tourze\PHPUnitSymfonyKernelTest\Attribute\AsRepository;
 
 /**
- * @method NodeDelay|null find($id, $lockMode = null, $lockVersion = null)
- * @method NodeDelay|null findOneBy(array $criteria, array $orderBy = null)
- * @method NodeDelay[]    findAll()
- * @method NodeDelay[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @extends ServiceEntityRepository<NodeDelay>
  */
+#[AsRepository(entityClass: NodeDelay::class)]
 class NodeDelayRepository extends ServiceEntityRepository
 {
-
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, NodeDelay::class);
     }
 
+    /**
+     * @return array<NodeDelay>
+     */
     public function findByTypeAndValue(DelayType $type, int $value): array
     {
+        /** @var array<NodeDelay> */
         return $this->createQueryBuilder('nd')
             ->andWhere('nd.type = :type')
             ->andWhere('nd.value = :value')
             ->setParameter('type', $type)
             ->setParameter('value', $value)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
+    /**
+     * @return array<NodeDelay>
+     */
     public function findPendingDelays(): array
     {
+        /** @var array<NodeDelay> */
         return $this->createQueryBuilder('nd')
             ->andWhere('nd.type = :specificTime')
             ->andWhere('nd.specificTime > :now')
@@ -41,6 +48,25 @@ class NodeDelayRepository extends ServiceEntityRepository
             ->setParameter('now', new \DateTime())
             ->orderBy('nd.specificTime', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
+    }
+
+    public function save(NodeDelay $entity, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(NodeDelay $entity, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 }

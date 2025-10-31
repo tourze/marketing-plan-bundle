@@ -2,28 +2,17 @@
 
 namespace MarketingPlanBundle\Tests\Service;
 
-use Doctrine\Common\Collections\ArrayCollection;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 自定义ArrayCollection，添加max方法
+ * @internal
  */
-class TestArrayCollection extends ArrayCollection
+#[CoversClass(TestArrayCollection::class)]
+final class TestArrayCollectionTest extends TestCase
 {
-    public function max()
-    {
-        if ($this->isEmpty()) {
-            return 0;
-        }
-        return max($this->toArray());
-    }
-}
-
-class TestArrayCollectionTest extends TestCase
-{
-    public function testMax_withEmptyCollection_returnsZero(): void
-    {
-        // Arrange
+    public function testMaxWithEmptyCollectionReturnsZero(): void
+    {        // Arrange
         $collection = new TestArrayCollection();
 
         // Act
@@ -33,9 +22,8 @@ class TestArrayCollectionTest extends TestCase
         $this->assertEquals(0, $result);
     }
 
-    public function testMax_withValues_returnsMaxValue(): void
-    {
-        // Arrange
+    public function testMaxWithValuesReturnsMaxValue(): void
+    {        // Arrange
         $collection = new TestArrayCollection([1, 5, 3, 9, 2]);
 
         // Act
@@ -44,4 +32,4 @@ class TestArrayCollectionTest extends TestCase
         // Assert
         $this->assertEquals(9, $result);
     }
-} 
+}

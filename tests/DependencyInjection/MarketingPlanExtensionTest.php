@@ -3,23 +3,13 @@
 namespace MarketingPlanBundle\Tests\DependencyInjection;
 
 use MarketingPlanBundle\DependencyInjection\MarketingPlanExtension;
-use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitSymfonyUnitTest\AbstractDependencyInjectionExtensionTestCase;
 
-class MarketingPlanExtensionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(MarketingPlanExtension::class)]
+final class MarketingPlanExtensionTest extends AbstractDependencyInjectionExtensionTestCase
 {
-    public function testLoad_registersServices(): void
-    {
-        // Arrange
-        $extension = new MarketingPlanExtension();
-        $container = new ContainerBuilder();
-
-        // Act
-        $extension->load([], $container);
-
-        // Assert
-        $this->assertTrue($container->hasDefinition('MarketingPlanBundle\Service\NodeService'));
-        $this->assertTrue($container->hasDefinition('MarketingPlanBundle\Service\TaskService'));
-        $this->assertTrue($container->hasDefinition('MarketingPlanBundle\Service\UserProgressService'));
-    }
-} 
+}

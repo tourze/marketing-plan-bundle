@@ -8,16 +8,14 @@ use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Entity\UserProgress;
 use MarketingPlanBundle\Enum\ProgressStatus;
+use Tourze\PHPUnitSymfonyKernelTest\Attribute\AsRepository;
 
 /**
- * @method UserProgress|null find($id, $lockMode = null, $lockVersion = null)
- * @method UserProgress|null findOneBy(array $criteria, array $orderBy = null)
- * @method UserProgress[]    findAll()
- * @method UserProgress[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @extends ServiceEntityRepository<UserProgress>
  */
+#[AsRepository(entityClass: UserProgress::class)]
 class UserProgressRepository extends ServiceEntityRepository
 {
-
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, UserProgress::class);
@@ -25,28 +23,36 @@ class UserProgressRepository extends ServiceEntityRepository
 
     /**
      * 查找某个任务的所有进行中的用户进度
+     *
+     * @return array<UserProgress>
      */
     public function findRunningByTask(Task $task): array
     {
+        /** @var array<UserProgress> */
         return $this->createQueryBuilder('up')
             ->andWhere('up.task = :task')
             ->andWhere('up.status = :status')
             ->setParameter('task', $task)
             ->setParameter('status', ProgressStatus::RUNNING)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     /**
      * 查找某个节点当前的用户进度
+     *
+     * @return array<UserProgress>
      */
     public function findByCurrentNode(Node $node): array
     {
+        /** @var array<UserProgress> */
         return $this->createQueryBuilder('up')
             ->andWhere('up.currentNode = :node')
             ->setParameter('node', $node)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     /**
@@ -56,13 +62,15 @@ class UserProgressRepository extends ServiceEntityRepository
      */
     public function countByTaskStatus(Task $task): array
     {
+        /** @var array<array{status: mixed, count: mixed}> $result */
         $result = $this->createQueryBuilder('up')
             ->select('up.status, COUNT(up.id) as count')
             ->andWhere('up.task = :task')
             ->setParameter('task', $task)
             ->groupBy('up.status')
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
 
         $counts = [
             'pending' => 0,
@@ -72,7 +80,12 @@ class UserProgressRepository extends ServiceEntityRepository
         ];
 
         foreach ($result as $row) {
-            $counts[$row['status']->value] = (int) $row['count'];
+            if (is_object($row['status']) && property_exists($row['status'], 'value')) {
+                $statusValue = $row['status']->value;
+                if (isset($counts[$statusValue]) && is_numeric($row['count'])) {
+                    $counts[$statusValue] = (int) $row['count'];
+                }
+            }
         }
 
         return $counts;
@@ -84,9 +97,12 @@ class UserProgressRepository extends ServiceEntityRepository
      * 1. 当前节点已激活
      * 2. 未流失
      * 3. 未完成整个流程
+     *
+     * @return array<UserProgress>
      */
     public function findReadyForNextNode(Node $currentNode): array
     {
+        /** @var array<UserProgress> */
         return $this->createQueryBuilder('up')
             ->join('up.stages', 'ns')
             ->andWhere('up.currentNode = :node')
@@ -97,7 +113,8 @@ class UserProgressRepository extends ServiceEntityRepository
             ->setParameter('node', $currentNode)
             ->setParameter('status', ProgressStatus::RUNNING)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     /**
@@ -106,9 +123,12 @@ class UserProgressRepository extends ServiceEntityRepository
      * 1. 已触达
      * 2. 未激活
      * 3. 超过指定时间
+     *
+     * @return array<UserProgress>
      */
     public function findShouldDropped(Node $node, \DateTimeInterface $beforeTime): array
     {
+        /** @var array<UserProgress> */
         return $this->createQueryBuilder('up')
             ->join('up.stages', 'ns')
             ->andWhere('up.currentNode = :node')
@@ -122,6 +142,25 @@ class UserProgressRepository extends ServiceEntityRepository
             ->setParameter('status', ProgressStatus::RUNNING)
             ->setParameter('beforeTime', $beforeTime)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
+    }
+
+    public function save(UserProgress $entity, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(UserProgress $entity, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 }

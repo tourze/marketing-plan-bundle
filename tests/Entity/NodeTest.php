@@ -5,14 +5,48 @@ namespace MarketingPlanBundle\Tests\Entity;
 use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\Task;
 use MarketingPlanBundle\Enum\NodeType;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitDoctrineEntity\AbstractEntityTestCase;
+use Tourze\ResourceManageBundle\Entity\ResourceConfig;
 
-class NodeTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(Node::class)]
+final class NodeTest extends AbstractEntityTestCase
 {
-    public function testToString_returnsNodeName(): void
+    protected function createEntity(): object
+    {
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
+
+        $node = new Node();
+        $node->setResource($resourceConfig);
+
+        return $node;
+    }
+
+    /**
+     * @return iterable<string, array{string, mixed}>
+     */
+    public static function propertiesProvider(): iterable
+    {
+        yield 'name' => ['name', '测试节点'];
+        yield 'type' => ['type', NodeType::RESOURCE];
+        yield 'sequence' => ['sequence', 5];
+        yield 'task' => ['task', new Task()];
+    }
+
+    public function testToStringReturnsEmptyStringWhenIdIsZero(): void
     {
         // Arrange
+        $resourceConfig = new ResourceConfig();
+        $resourceConfig->setType('none');
+        $resourceConfig->setAmount(0);
+
         $node = new Node();
+        $node->setResource($resourceConfig);
         $name = '测试节点';
         $node->setName($name);
 
@@ -22,26 +56,4 @@ class NodeTest extends TestCase
         // Assert - Node未保存时ID为0，返回空字符串
         $this->assertEquals('', $result);
     }
-
-    public function testSettersAndGetters(): void
-    {
-        // Arrange
-        $node = new Node();
-        $name = '节点名称';
-        $type = NodeType::RESOURCE;
-        $sequence = 5;
-        $task = $this->createMock(Task::class);
-
-        // Act
-        $node->setName($name)
-             ->setType($type)
-             ->setSequence($sequence)
-             ->setTask($task);
-
-        // Assert
-        $this->assertEquals($name, $node->getName());
-        $this->assertEquals($type, $node->getType());
-        $this->assertEquals($sequence, $node->getSequence());
-        $this->assertSame($task, $node->getTask());
-    }
-} 
+}

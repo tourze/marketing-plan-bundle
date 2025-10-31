@@ -1,25 +1,30 @@
 <?php
 
-namespace MarketingPlanBundle\Tests\Unit\Exception;
+namespace MarketingPlanBundle\Tests\Exception;
 
-use MarketingPlanBundle\Exception\UserProgressException;
 use MarketingPlanBundle\Exception\MarketingPlanException;
-use PHPUnit\Framework\TestCase;
+use MarketingPlanBundle\Exception\NodeException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitBase\AbstractExceptionTestCase;
 
-class UserProgressExceptionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(NodeException::class)]
+final class NodeExceptionTest extends AbstractExceptionTestCase
 {
     public function testExceptionCreation(): void
     {
         // Arrange
-        $message = '用户进度更新失败';
-        $code = 4001;
+        $message = '节点操作失败';
+        $code = 2001;
         $previousException = new \Exception('前一个异常');
 
         // Act
-        $exception = new UserProgressException($message, $code, $previousException);
+        $exception = new NodeException($message, $code, $previousException);
 
         // Assert
-        $this->assertInstanceOf(UserProgressException::class, $exception);
+        $this->assertInstanceOf(NodeException::class, $exception);
         $this->assertEquals($message, $exception->getMessage());
         $this->assertEquals($code, $exception->getCode());
         $this->assertSame($previousException, $exception->getPrevious());
@@ -28,10 +33,10 @@ class UserProgressExceptionTest extends TestCase
     public function testExceptionWithDefaultParameters(): void
     {
         // Act
-        $exception = new UserProgressException();
+        $exception = new NodeException();
 
         // Assert
-        $this->assertInstanceOf(UserProgressException::class, $exception);
+        $this->assertInstanceOf(NodeException::class, $exception);
         $this->assertEquals('', $exception->getMessage());
         $this->assertEquals(0, $exception->getCode());
         $this->assertNull($exception->getPrevious());
@@ -40,10 +45,10 @@ class UserProgressExceptionTest extends TestCase
     public function testExceptionWithMessageOnly(): void
     {
         // Arrange
-        $message = '用户进度数据无效';
+        $message = '节点不存在';
 
         // Act
-        $exception = new UserProgressException($message);
+        $exception = new NodeException($message);
 
         // Assert
         $this->assertEquals($message, $exception->getMessage());
@@ -54,7 +59,7 @@ class UserProgressExceptionTest extends TestCase
     public function testInheritance(): void
     {
         // Arrange & Act
-        $exception = new UserProgressException();
+        $exception = new NodeException();
 
         // Assert
         $this->assertInstanceOf(MarketingPlanException::class, $exception);
@@ -65,11 +70,11 @@ class UserProgressExceptionTest extends TestCase
     public function testExceptionCanBeThrown(): void
     {
         // Assert
-        $this->expectException(UserProgressException::class);
-        $this->expectExceptionMessage('用户进度状态冲突');
-        $this->expectExceptionCode(409);
+        $this->expectException(NodeException::class);
+        $this->expectExceptionMessage('节点状态异常');
+        $this->expectExceptionCode(404);
 
         // Act
-        throw new UserProgressException('用户进度状态冲突', 409);
+        throw new NodeException('节点状态异常', 404);
     }
 }

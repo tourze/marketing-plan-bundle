@@ -7,16 +7,14 @@ use Doctrine\Persistence\ManagerRegistry;
 use MarketingPlanBundle\Entity\Node;
 use MarketingPlanBundle\Entity\NodeStage;
 use MarketingPlanBundle\Enum\NodeStageStatus;
+use Tourze\PHPUnitSymfonyKernelTest\Attribute\AsRepository;
 
 /**
- * @method NodeStage|null find($id, $lockMode = null, $lockVersion = null)
- * @method NodeStage|null findOneBy(array $criteria, array $orderBy = null)
- * @method NodeStage[]    findAll()
- * @method NodeStage[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @extends ServiceEntityRepository<NodeStage>
  */
+#[AsRepository(entityClass: NodeStage::class)]
 class NodeStageRepository extends ServiceEntityRepository
 {
-
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, NodeStage::class);
@@ -36,6 +34,7 @@ class NodeStageRepository extends ServiceEntityRepository
     {
         $qb = $this->createQueryBuilder('ns');
 
+        /** @var array{total: int, touched: int, activated: int, dropped: int} */
         return $qb->select(
             'COUNT(ns.id) as total',
             'COUNT(ns.touchTime) as touched',
@@ -45,7 +44,8 @@ class NodeStageRepository extends ServiceEntityRepository
             ->andWhere('ns.node = :node')
             ->setParameter('node', $node)
             ->getQuery()
-            ->getSingleResult();
+            ->getSingleResult()
+        ;
     }
 
     /**
@@ -54,9 +54,12 @@ class NodeStageRepository extends ServiceEntityRepository
      * 1. 当前节点已激活
      * 2. 未流失
      * 3. 未完成整个流程
+     *
+     * @return array<NodeStage>
      */
     public function findReadyForNextNode(Node $currentNode): array
     {
+        /** @var array<NodeStage> */
         return $this->createQueryBuilder('ns')
             ->andWhere('ns.node = :node')
             ->andWhere('ns.activeTime IS NOT NULL')
@@ -65,7 +68,8 @@ class NodeStageRepository extends ServiceEntityRepository
             ->setParameter('node', $currentNode)
             ->setParameter('status', NodeStageStatus::RUNNING)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     /**
@@ -74,9 +78,12 @@ class NodeStageRepository extends ServiceEntityRepository
      * 1. 已触达
      * 2. 未激活
      * 3. 超过指定时间
+     *
+     * @return array<NodeStage>
      */
     public function findShouldDropped(Node $node, \DateTimeInterface $beforeTime): array
     {
+        /** @var array<NodeStage> */
         return $this->createQueryBuilder('ns')
             ->andWhere('ns.node = :node')
             ->andWhere('ns.touchTime IS NOT NULL')
@@ -86,6 +93,25 @@ class NodeStageRepository extends ServiceEntityRepository
             ->setParameter('node', $node)
             ->setParameter('beforeTime', $beforeTime)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
+    }
+
+    public function save(NodeStage $entity, bool $flush = true): void
+    {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(NodeStage $entity, bool $flush = true): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 }

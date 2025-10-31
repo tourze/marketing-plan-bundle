@@ -1,12 +1,17 @@
 <?php
 
-namespace MarketingPlanBundle\Tests\Unit\Exception;
+namespace MarketingPlanBundle\Tests\Exception;
 
-use MarketingPlanBundle\Exception\TaskException;
 use MarketingPlanBundle\Exception\MarketingPlanException;
-use PHPUnit\Framework\TestCase;
+use MarketingPlanBundle\Exception\TaskException;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitBase\AbstractExceptionTestCase;
 
-class TaskExceptionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(TaskException::class)]
+final class TaskExceptionTest extends AbstractExceptionTestCase
 {
     public function testExceptionCreation(): void
     {

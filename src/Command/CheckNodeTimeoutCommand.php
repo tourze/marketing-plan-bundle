@@ -18,6 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class CheckNodeTimeoutCommand extends Command
 {
     public const NAME = 'marketing-plan:check-node-timeout';
+
     public function __construct(
         private readonly NodeRepository $nodeRepository,
         private readonly UserProgressService $userProgressService,

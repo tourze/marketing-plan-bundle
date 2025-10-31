@@ -1,11 +1,16 @@
 <?php
 
-namespace MarketingPlanBundle\Tests\Unit\Exception;
+namespace MarketingPlanBundle\Tests\Exception;
 
 use MarketingPlanBundle\Exception\MarketingPlanException;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+use Tourze\PHPUnitBase\AbstractExceptionTestCase;
 
-class MarketingPlanExceptionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(MarketingPlanException::class)]
+final class MarketingPlanExceptionTest extends AbstractExceptionTestCase
 {
     public function testIsAbstractClass(): void
     {
@@ -33,7 +38,7 @@ class MarketingPlanExceptionTest extends TestCase
 
         // Assert - 抽象类不能直接实例化
         $this->assertTrue($reflection->isAbstract());
-        
+
         // 使用反射验证无法实例化
         $this->expectException(\Error::class);
         $this->expectExceptionMessage('Cannot instantiate abstract class');
