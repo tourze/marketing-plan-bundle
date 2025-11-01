@@ -32,7 +32,7 @@
     "tourze/doctrine-user-bundle": "1.0.*",
     "tourze/easy-admin-menu-bundle": "1.0.*",
     "tourze/enum-extra": "1.*",
-    "tourze/resource-manage-bundle": "0.1.*",
+    "tourze/resource-manage-bundle": "1.0.*",
     "tourze/symfony-dependency-service-loader": "1.*",
     "tourze/user-tag-bundle": "0.0.*",
     "tourze/user-tag-contracts": "0.0.*"
@@ -42,7 +42,7 @@
     "doctrine/doctrine-fixtures-bundle": "^4.0",
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^11.5",
-    "tourze/catalog-bundle": "0.0.*",
+    "tourze/catalog-bundle": "1.0.*",
     "tourze/phpunit-base": "1.*",
     "tourze/phpunit-doctrine-entity": "1.*",
     "tourze/phpunit-enum": "1.*",
