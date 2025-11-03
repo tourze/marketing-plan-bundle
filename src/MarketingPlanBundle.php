@@ -8,6 +8,7 @@ use Tourze\BundleDependency\BundleDependencyInterface;
 use Tourze\DoctrineResolveTargetEntityBundle\DoctrineResolveTargetEntityBundle;
 use Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle;
 use Tourze\DoctrineUserBundle\DoctrineUserBundle;
+use Tourze\EasyAdminMenuBundle\EasyAdminMenuBundle;
 use Tourze\ResourceManageBundle\ResourceManageBundle;
 use UserTagBundle\UserTagBundle;
 
@@ -22,6 +23,7 @@ class MarketingPlanBundle extends Bundle implements BundleDependencyInterface
             DoctrineUserBundle::class => ['all' => true],
             ResourceManageBundle::class => ['all' => true],
             UserTagBundle::class => ['all' => true],
+            EasyAdminMenuBundle::class => ['all' => true],
         ];
     }
 }
