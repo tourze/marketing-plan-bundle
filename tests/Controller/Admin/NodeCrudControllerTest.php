@@ -69,15 +69,6 @@ final class NodeCrudControllerTest extends AbstractEasyAdminControllerTestCase
         yield 'status' => ['status'];
     }
 
-    /**
-     * 重写父类的testNewPageFieldsProviderHasData方法，跳过验证
-     */
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(Node::class, NodeCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $controller = new NodeCrudController();

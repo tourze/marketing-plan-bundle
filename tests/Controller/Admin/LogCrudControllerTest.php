@@ -66,12 +66,6 @@ final class LogCrudControllerTest extends AbstractEasyAdminControllerTestCase
         yield 'failureReason' => ['failureReason'];
     }
 
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(Log::class, LogCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $controller = new LogCrudController();

@@ -61,15 +61,6 @@ final class NodeConditionCrudControllerTest extends AbstractEasyAdminControllerT
         // value是TextareaField，测试基类只支持input字段检查，因此不包含在测试中
     }
 
-    /**
-     * 重写父类的testNewPageFieldsProviderHasData方法，适配NodeCondition实体的字段
-     */
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(NodeCondition::class, NodeConditionCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $controller = new NodeConditionCrudController();

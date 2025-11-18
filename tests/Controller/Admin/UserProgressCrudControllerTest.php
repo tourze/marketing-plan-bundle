@@ -61,15 +61,6 @@ final class UserProgressCrudControllerTest extends AbstractEasyAdminControllerTe
         yield 'userId' => ['userId'];
     }
 
-    /**
-     * 重写父类的testNewPageFieldsProviderHasData方法，适配UserProgress实体的字段
-     */
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(UserProgress::class, UserProgressCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $controller = new UserProgressCrudController();

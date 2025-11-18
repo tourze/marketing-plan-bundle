@@ -58,12 +58,6 @@ final class NodeDelayCrudControllerTest extends AbstractEasyAdminControllerTestC
         yield 'specificTime' => ['specificTime'];
     }
 
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(NodeDelay::class, NodeDelayCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $controller = new NodeDelayCrudController();

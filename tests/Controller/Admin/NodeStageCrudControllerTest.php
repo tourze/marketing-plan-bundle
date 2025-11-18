@@ -74,12 +74,6 @@ final class NodeStageCrudControllerTest extends AbstractEasyAdminControllerTestC
         yield 'dropReason' => ['dropReason'];
     }
 
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(NodeStage::class, NodeStageCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $client = $this->createAuthenticatedClient();

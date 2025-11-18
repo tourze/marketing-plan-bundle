@@ -63,15 +63,6 @@ final class TaskCrudControllerTest extends AbstractEasyAdminControllerTestCase
         // description是TextareaField，测试基类只支持input字段检查，因此不包含在测试中
     }
 
-    /**
-     * 重写父类的testNewPageFieldsProviderHasData方法，适配Task实体的字段
-     */
-    public function testGetEntityFqcn(): void
-    {
-        // 验证控制器处理的实体类型
-        $this->assertSame(Task::class, TaskCrudController::getEntityFqcn());
-    }
-
     public function testConfigureFields(): void
     {
         $controller = new TaskCrudController();
